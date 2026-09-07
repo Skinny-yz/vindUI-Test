@@ -1,5 +1,6 @@
-
+--!nonstrict
 local UI = (function()
+--!nonstrict
 local TweenService      = game:GetService("TweenService")
 local Players           = game:GetService("Players")
 local UserInputService  = game:GetService("UserInputService")
@@ -77,6 +78,18 @@ function Janitor:Destroy()
 end
 
 local LibJanitor = Janitor.new()
+
+local UIJobs = {}
+local function ScheduleUI(key, callback) UIJobs[key] = callback end
+LibJanitor:Add(RunService.Heartbeat:Connect(function()
+	local batch = UIJobs
+	UIJobs = {}
+	for _, callback in pairs(batch) do
+		local ok, err = pcall(callback)
+		if not ok then warn("VindUI layout: " .. tostring(err)) end
+	end
+end))
+LibJanitor:Add(function() table.clear(UIJobs) end)
 
 local function MakeSignal()
 	local listeners = {}
@@ -191,7 +204,7 @@ local function BindAcrylicCamera(camera)
 
 	local function connect(property)
 		table.insert(CameraConnections,
-			camera:GetPropertyChangedSignal(property):Connect(UpdateAllAcrylic))
+			camera:GetPropertyChangedSignal(property):Connect(function() ScheduleUI(AcrylicControllers, UpdateAllAcrylic) end))
 	end
 	connect("CFrame")
 	connect("ViewportSize")
@@ -297,7 +310,7 @@ local function CreateWindowAcrylic(guiObject)
 	for _, property in ipairs({ "AbsolutePosition", "AbsoluteSize", "Visible" }) do
 		table.insert(controller.Connections,
 			guiObject:GetPropertyChangedSignal(property):Connect(function()
-				controller:Update()
+				ScheduleUI(controller, function() controller:Update() end)
 			end))
 	end
 	table.insert(controller.Connections, guiObject.AncestryChanged:Connect(function()
@@ -604,22 +617,41 @@ end
 
 local function ObserveProperties(targets, callback)
 	local owner = Janitor.new()
-	local queued = false
 	local function schedule()
-		if queued or owner._dead then return end
-		queued = true
-		task.defer(function()
-			queued = false
-			if not owner._dead then callback() end
-		end)
+		if owner._dead then return end
+		ScheduleUI(owner, function() if not owner._dead then callback() end end)
 	end
 	for _, target in ipairs(targets) do
-		for i = 2, #target do
-			owner:Add(target[1]:GetPropertyChangedSignal(target[i]):Connect(schedule))
-		end
+		for i = 2, #target do owner:Add(target[1]:GetPropertyChangedSignal(target[i]):Connect(schedule)) end
 	end
+	owner:Add(function() UIJobs[owner] = nil end)
 	owner.Disconnect = owner.Destroy
 	schedule()
+	return owner
+end
+
+local function BindWidthLayout(gui, callback)
+	local previousWidth = nil
+	local targets = {{gui, "AbsoluteSize", "Visible"}}
+	local current = gui.Parent
+	while current and current:IsA("GuiObject") do
+		table.insert(targets, {current, "Visible"})
+		current = current.Parent
+	end
+	local owner = ObserveProperties(targets, function()
+		if not gui.Parent then return end
+		local ancestor = gui
+		while ancestor and ancestor:IsA("GuiObject") do
+			if not ancestor.Visible then return end
+			ancestor = ancestor.Parent
+		end
+		local width = gui.AbsoluteSize.X
+		if width <= 0 or width == previousWidth then return end
+		previousWidth = width
+		callback()
+	end)
+	owner:Add(gui.Destroying:Connect(function() owner:Destroy() end))
+	LibJanitor:Add(owner)
 	return owner
 end
 
@@ -1943,19 +1975,14 @@ local function SetupResize(frame, handle, janitor, opts)
 		startInput = Vector2.new(input.Position.X, input.Position.Y)
 	end))
 
-	janitor:Add(UserInputService.InputChanged:Connect(function(input)
-		if not resizing then return end
-		if input.UserInputType ~= Enum.UserInputType.MouseMovement
-			and input.UserInputType ~= Enum.UserInputType.Touch then
-			return
-		end
-		if input.UserInputType == Enum.UserInputType.Touch
-			and activeInput and input ~= activeInput then
-			return
-		end
-
+	local pendingPosition
+	local resizeJob = {}
+	local function applyResize()
+		if not pendingPosition or not frame.Parent then return end
+		local position = pendingPosition
+		pendingPosition = nil
 		local view = ViewportSize()
-		local delta = Vector2.new(input.Position.X, input.Position.Y) - startInput
+		local delta = Vector2.new(position.X, position.Y) - startInput
 		local maxW = math.max(view.X - startTopLeft.X - 8, 100)
 		local maxH = math.max(view.Y - startTopLeft.Y - 8, 100)
 		local newW = SafeClamp(startSize.X + delta.X, math.min(minSize.X * GetUIScale(), maxW), maxW)
@@ -1969,6 +1996,14 @@ local function SetupResize(frame, handle, janitor, opts)
 		frame.Position = UDim2.fromOffset(math.round(centerX / s), math.round(centerY / s))
 
 		if onResize then onResize(frame.Size, false) end
+	end
+	janitor:Add(function() UIJobs[resizeJob] = nil end)
+	janitor:Add(UserInputService.InputChanged:Connect(function(input)
+		if not resizing then return end
+		if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then return end
+		if input.UserInputType == Enum.UserInputType.Touch and input ~= activeInput then return end
+		pendingPosition = input.Position
+		ScheduleUI(resizeJob, applyResize)
 	end))
 
 	janitor:Add(UserInputService.InputEnded:Connect(function(input)
@@ -1976,6 +2011,8 @@ local function SetupResize(frame, handle, janitor, opts)
 		if input == activeInput
 			or (activeInput and activeInput.UserInputType == Enum.UserInputType.MouseButton1
 				and input.UserInputType == Enum.UserInputType.MouseButton1) then
+			applyResize()
+			UIJobs[resizeJob] = nil
 			resizing = false
 			activeInput = nil
 			if onResize then onResize(frame.Size, true) end
@@ -2098,7 +2135,7 @@ local function AddTitleDesc(card, x, rightReserve, title, description, baseHeigh
 		end
 	end
 
-	card:GetPropertyChangedSignal("AbsoluteSize"):Connect(relayout)
+	BindWidthLayout(card, relayout)
 	task.defer(relayout)
 
 	return titleLabel, descLabel, relayout
@@ -2333,6 +2370,12 @@ function NullUI:CreateWindow(opts)
 	tabBarLayout.Parent = tabBar
 
 	AddScrollbar(tabBar)
+	if opts.TabScrollbar ~= false then
+		tabBar.ScrollBarThickness = 3
+		tabBar.ScrollBarImageTransparency = 0.35
+		tabBar.ScrollBarImageColor3 = NullUI.Theme.TextDim
+		tabBar.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
+	end
 
 	local tabIndicatorLayer = Instance.new("Frame")
 	tabIndicatorLayer.Name = "TabIndicatorLayer"
@@ -2746,7 +2789,8 @@ function Window:Open()
 end
 
 function Window:ToggleFullscreen()
-	if self._destroyed then return end
+	if self._destroyed or self._fullscreenBusy or self._busy then return end
+	self._fullscreenBusy = true
 	local gui = self._gui
 	self._fullscreen = not self._fullscreen
 
@@ -2766,6 +2810,7 @@ function Window:ToggleFullscreen()
 	end
 
 	task.delay(0.36, function()
+		self._fullscreenBusy = false
 		if self._drag then self._drag.Sync() end
 	end)
 end
@@ -4734,7 +4779,7 @@ function Tab:AddLineText(text)
 		right.Size = UDim2.new(0, sideW, 0, 1)
 	end
 
-	holder:GetPropertyChangedSignal("AbsoluteSize"):Connect(relayout)
+	BindWidthLayout(holder, relayout)
 	task.defer(relayout)
 
 	return {
@@ -5894,7 +5939,7 @@ function Tab:AddInfoGrid(opts)
 			local cellW = (w - GRID_GAP * (columns - 1)) / columns
 			gridLayout.CellSize = UDim2.fromOffset(cellW, CHIP_H)
 		end
-		grid:GetPropertyChangedSignal("AbsoluteSize"):Connect(relayout)
+		BindWidthLayout(grid, relayout)
 		task.defer(relayout)
 
 		for i, item in ipairs(items) do
@@ -6755,7 +6800,7 @@ function Tab:AddSlider(opts)
 			local _, h = MeasureText(opts.Description, 12, math.max(w - textX - 14, 40))
 			card.Size = UDim2.new(1, 0, 0, math.max(76, 26 + h + 8 + 20))
 		end
-		card:GetPropertyChangedSignal("AbsoluteSize"):Connect(relayout)
+		BindWidthLayout(card, relayout)
 		task.defer(relayout)
 	end
 
@@ -7348,7 +7393,7 @@ function Tab:AddTextbox(opts)
 	end
 
 	box:GetPropertyChangedSignal("Text"):Connect(function() resizePill(true) end)
-	card:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() resizePill(false) end)
+	BindWidthLayout(card, function() resizePill(false) end)
 	task.defer(function() resizePill(false) end)
 
 	box.Focused:Connect(function()
@@ -8837,7 +8882,7 @@ function Tab:AddCardGrid(opts)
 			math.max(0, (gridLayout.AbsoluteContentSize.Y / GetUIScale()) + GRID_TOP_PAD + GRID_BOTTOM_PAD)
 		)
 	end
-	gridLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateGridCanvas)
+	self._janitor:Add(ObserveProperties({{gridLayout, "AbsoluteContentSize"}}, updateGridCanvas))
 	task.defer(updateGridCanvas)
 
 	local SAFETY_MARGIN = 4
@@ -8852,7 +8897,7 @@ function Tab:AddCardGrid(opts)
 		currentColumns = columns
 		gridLayout.CellSize = UDim2.fromOffset(math.max(1, cellW), CELL_H)
 	end
-	gridScroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(relayoutGridColumns)
+	BindWidthLayout(gridScroll, relayoutGridColumns)
 	task.defer(relayoutGridColumns)
 
 	if not showNativeScrollbar then
