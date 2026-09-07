@@ -2,7 +2,7 @@
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
-local CONFIG = {
+getgenv().CONFIG = {
 	-- Choose which integration panels to show. Restart after changing these.
 	Integrations = {
 		Spotify = false,
@@ -27,7 +27,7 @@ local CONFIG = {
 local VindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Skinny-yz/vindUI-Test/main/full.luau"))()
 VindUI:PreloadIcons({ "Lucide", "Material", "Phosphor", "SF" })
 VindUI:SetScaleRange(0.75, 1.35) -- Desktop
-VindUI:SetMobileScaleReference(CONFIG.MobileScaleReference)
+VindUI:SetMobileScaleReference(getgenv().CONFIG.MobileScaleReference)
 
 local TOGGLE_KEY = Enum.KeyCode.RightShift
 local Tabs = {}
@@ -43,7 +43,7 @@ local Window = VindUI:CreateWindow({
 	UseBlur = true,
 	DefaultTab = "Home",
 	TabScrollbar = true, -- false hides the sidebar scrollbar; scrolling stays enabled
-	UserInfo = CONFIG.UserInfo,
+	UserInfo = getgenv().CONFIG.UserInfo,
 })
 
 VindUI:Notify({
@@ -55,31 +55,31 @@ VindUI:Notify({
 
 -- Optional panels: loading a module alone does not create dock buttons.
 local Cloud
-if CONFIG.Integrations.Cloud or CONFIG.Integrations.GlobalChat then
+if getgenv().CONFIG.Integrations.Cloud or getgenv().CONFIG.Integrations.GlobalChat then
 	Cloud = VindUI:CloudService({
-		BaseUrl = CONFIG.CloudBaseUrl,
+		BaseUrl = getgenv().CONFIG.CloudBaseUrl,
 		Script = "vind-ui-reborn-showcase",
 	})
 end
 
-if CONFIG.Integrations.Spotify then
+if getgenv().CONFIG.Integrations.Spotify then
 	Window:AddSpotifyPanel({
 		Title = "Spotify Remote",
 		Icon = "Lucide:music-2",
-		BridgeUrl = CONFIG.SpotifyBridgeUrl,
-		ConnectUrl = CONFIG.SpotifyConnectUrl,
+		BridgeUrl = getgenv().CONFIG.SpotifyBridgeUrl,
+		ConnectUrl = getgenv().CONFIG.SpotifyConnectUrl,
 		EmbedMode = true,
-		AutoConnect = CONFIG.SpotifyBridgeUrl ~= "",
+		AutoConnect = getgenv().CONFIG.SpotifyBridgeUrl ~= "",
 	})
 end
 
-if CONFIG.Integrations.Assistant then
+if getgenv().CONFIG.Integrations.Assistant then
 	local ChatDockButton
 	local Assistant = VindUI:CreateAIAssistant({
 		Providers = {{
 			Name = "OpenRouter",
 			Endpoint = "https://openrouter.ai/api/v1/chat/completions",
-			ApiKey = CONFIG.OpenRouterApiKey,
+			ApiKey = getgenv().CONFIG.OpenRouterApiKey,
 			Model = "openrouter/free",
 		}},
 		Window = Window,
@@ -95,15 +95,15 @@ if CONFIG.Integrations.Assistant then
 		end,
 		OnClear = function() Assistant:Reset() end,
 		OnSend = function(panel, text)
-			if CONFIG.OpenRouterApiKey == "" then
-				panel:AddMessage("assistant", "Add your API key to CONFIG.OpenRouterApiKey to enable the assistant.")
+			if getgenv().CONFIG.OpenRouterApiKey == "" then
+				panel:AddMessage("assistant", "Add your API key to getgenv().CONFIG.OpenRouterApiKey to enable the assistant.")
 				return
 			end
 			Assistant:Ask(panel, text)
 		end,
 		OnStop = function() Assistant:Stop() end,
 		OnRegenerate = function(panel, text)
-			if CONFIG.OpenRouterApiKey ~= "" then Assistant:Ask(panel, text) end
+			if getgenv().CONFIG.OpenRouterApiKey ~= "" then Assistant:Ask(panel, text) end
 		end,
 	})
 
@@ -113,7 +113,7 @@ if CONFIG.Integrations.Assistant then
 	})
 end
 
-if CONFIG.Integrations.Cloud then
+if getgenv().CONFIG.Integrations.Cloud then
 	local CloudDockButton
 	local CloudPanel = Window:AddCloudPanel({
 		Service = Cloud,
@@ -128,7 +128,7 @@ if CONFIG.Integrations.Cloud then
 	})
 end
 
-if CONFIG.Integrations.GlobalChat then
+if getgenv().CONFIG.Integrations.GlobalChat then
 	local GlobalChatDockButton
 	local GlobalChatPanel = Window:AddGlobalChatPanel({
 		Service = Cloud,
@@ -165,7 +165,7 @@ Details:AddCard({
 	Rating = {
 		Title       = "Rate Vind Ui Reborn",
 		Placeholder = "Tell us what you think...",
-		WebhookUrl  = CONFIG.FeedbackWebhook,
+		WebhookUrl  = getgenv().CONFIG.FeedbackWebhook,
 	},
 })
 
@@ -179,7 +179,7 @@ local systemGrid = Details:AddSystemInfoGrid({
 -- chat panels above, when their integration is enabled.
 -- Shows how many devices are currently running this script.
 local activeUsersGrid = Details:AddActiveUsersGrid({
-	Service     = Cloud and CONFIG.CloudBaseUrl ~= "" and Cloud or nil,
+	Service     = Cloud and getgenv().CONFIG.CloudBaseUrl ~= "" and Cloud or nil,
 	Description = "Live users — configure CloudBaseUrl to enable",
 	Interval    = 30,
 })
@@ -211,7 +211,7 @@ ScriptChangelog:AddChangelogEntry({
 -- involved anywhere. Replaces the old UI Changelog sub-tab.
 local Leaderboard = Tabs.Home:AddSubTab({ Name = "Leaderboard", Icon = "Lucide:trophy" })
 local leaderboard = Leaderboard:AddLeaderboard({
-	Service     = Cloud and CONFIG.CloudBaseUrl ~= "" and Cloud or nil,
+	Service     = Cloud and getgenv().CONFIG.CloudBaseUrl ~= "" and Cloud or nil,
 	Description = "Community activity — configure CloudBaseUrl to enable",
 })
 
@@ -260,7 +260,7 @@ Profile:AddRating({
 	Title       = "How's the Profile tab?",
 	Placeholder = "Optional comment...",
 	MaxStars    = 5,
-	WebhookUrl  = CONFIG.FeedbackWebhook,
+	WebhookUrl  = getgenv().CONFIG.FeedbackWebhook,
 })
 
 local Actions = Tabs.General:AddSubTab({ Name = "Actions", Icon = "Phosphor:lightning" })
@@ -527,13 +527,13 @@ GeneralSettings:AddDropdown({
 GeneralSettings:AddDropdown({
 	Text = "Profile Name",
 	Options = {"display", "username", "anonymous"},
-	Default = CONFIG.UserInfo.NameMode,
+	Default = getgenv().CONFIG.UserInfo.NameMode,
 	Callback = function(mode) Window:SetUserInfo({NameMode = mode}) end,
 })
 GeneralSettings:AddTextbox({
 	Text = "Profile Avatar",
 	Description = "player, asset ID, or rbxassetid://...",
-	Default = tostring(CONFIG.UserInfo.Avatar),
+	Default = tostring(getgenv().CONFIG.UserInfo.Avatar),
 	Callback = function(value) Window:SetUserInfo({Avatar = value ~= "" and value or "player"}) end,
 })
 GeneralSettings:AddButton({Text = "Restore Window Layout", Callback = function() Window:ResetLayout() end})
@@ -700,7 +700,7 @@ Tabs.Components:AddRating({
 	Title       = "Standalone Rating Example",
 	Placeholder = "Sends straight to the configured webhook",
 	MaxStars    = 5,
-	WebhookUrl  = CONFIG.FeedbackWebhook,
+	WebhookUrl  = getgenv().CONFIG.FeedbackWebhook,
 })
 Tabs.Components:AddDivider()
 
@@ -1002,18 +1002,18 @@ Tabs.About:AddSection("Support", "Lucide:message-circle")
 Tabs.About:AddCard({
 	Image       = "Lucide:github",
 	Title       = "Project Repository",
-	Description = "Set CONFIG.CommunityUrl to your GitHub or community page",
+	Description = "Set getgenv().CONFIG.CommunityUrl to your GitHub or community page",
 	ButtonText  = "Copy project link",
 	ButtonCallback = function()
-		if CONFIG.CommunityUrl == "" then
-			VindUI:Notify({ Title = "Not configured", Text = "Add your public URL to CONFIG.CommunityUrl.", Type = "warning", Duration = 3 })
+		if getgenv().CONFIG.CommunityUrl == "" then
+			VindUI:Notify({ Title = "Not configured", Text = "Add your public URL to getgenv().CONFIG.CommunityUrl.", Type = "warning", Duration = 3 })
 			return
 		end
 		local setclipboard = (syn and syn.write_clipboard)
 			or (getgenv and getgenv().setclipboard)
 			or setclipboard
 		if setclipboard then
-			pcall(setclipboard, CONFIG.CommunityUrl)
+			pcall(setclipboard, getgenv().CONFIG.CommunityUrl)
 			VindUI:Notify({ Title = "Copied", Text = "Project link copied to your clipboard", Type = "success", Duration = 3 })
 		else
 			VindUI:Notify({ Title = "Unavailable", Text = "Your executor doesn't support setclipboard", Type = "warning", Duration = 3 })
@@ -1093,9 +1093,18 @@ local Advanced = Sections:AddCollapsibleSection({Title = "Advanced", Collapsed =
 Advanced:AddTextbox({Text = "Name", Default = "Example"})
 local Box = Sections:AddTabBox()
 local Farm = Box:AddTab("Auto Farm")
-Farm:AddToggle({Text = "Enable Auto Farm", Default = false})
+local FarmMain = Farm:AddCollapsibleSection({Title = "General"})
+FarmMain:AddToggle({Text = "Enable Auto Farm", Default = false})
+FarmMain:AddDropdown({Text = "Mode", Options = {"Nearest", "Selected"}, Default = "Nearest"})
+local FarmSafety = Farm:AddCollapsibleSection({Title = "Limits", Collapsed = true})
+FarmSafety:AddSlider({Text = "Maximum targets", Min = 1, Max = 10, Default = 3})
 local FarmSettings = Box:AddTab("Settings")
-FarmSettings:AddSlider({Text = "Distance", Min = 0, Max = 100, Default = 25})
+local Range = FarmSettings:AddCollapsibleSection({Title = "Range"})
+Range:AddSlider({Text = "Distance", Min = 0, Max = 100, Default = 25})
+local Timing = FarmSettings:AddCollapsibleSection({Title = "Timing"})
+Timing:AddSlider({Text = "Interval", Min = 1, Max = 10, Default = 2})
+local Extra = FarmSettings:AddCollapsibleSection({Title = "Advanced", Collapsed = true})
+Extra:AddToggle({Text = "Show status", Default = true})
 local Audio = Sections:AddToggleSection({Title = "Audio Settings", Text = "Enable Audio", Default = false})
 Audio:AddSlider({Text = "Volume", Min = 0, Max = 100, Default = 50})
 Audio:AddDropdown({Text = "Output", Options = {"Music", "Effects", "All"}, Default = "All"})

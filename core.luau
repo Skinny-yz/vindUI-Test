@@ -10130,14 +10130,22 @@ function Tab:AddTabBox(options)
  local frame = BaseCard(self._page, 0)
  frame.Name = "TabBox"
  frame.AutomaticSize = Enum.AutomaticSize.Y
+ local inset = Instance.new("UIPadding")
+ inset.PaddingLeft = UDim.new(0, 8)
+ inset.PaddingRight = UDim.new(0, 8)
+ inset.PaddingTop = UDim.new(0, 8)
+ inset.PaddingBottom = UDim.new(0, 8)
+ inset.Parent = frame
  local layout = Instance.new("UIListLayout")
  layout.SortOrder = Enum.SortOrder.LayoutOrder
  layout.Parent = frame
  local bar = Instance.new("ScrollingFrame")
  bar.Name = "TabBoxTabs"
- bar.BackgroundTransparency = 1
+ bar.BackgroundTransparency = 0.96
+ BindTheme(bar, "BackgroundColor3", "Accent")
+ Corner(bar, 8)
  bar.BorderSizePixel = 0
- bar.Size = UDim2.new(1, 0, 0, 38)
+ bar.Size = UDim2.new(1, 0, 0, 36)
  bar.CanvasSize = UDim2.new()
  bar.AutomaticCanvasSize = Enum.AutomaticSize.X
  bar.ScrollingDirection = Enum.ScrollingDirection.X
@@ -10147,8 +10155,17 @@ function Tab:AddTabBox(options)
  local row = Instance.new("UIListLayout")
  row.FillDirection = Enum.FillDirection.Horizontal
  row.SortOrder = Enum.SortOrder.LayoutOrder
+ row.Padding = UDim.new(0, 4)
  row.Parent = bar
  local box = {Instance = frame, Tabs = {}}
+ local function resizeButtons()
+  local count = #box.Tabs
+  if count == 0 then return end
+  local available = bar.AbsoluteSize.X / GetUIScale()
+  local width = math.max(100, (available - (count - 1) * 4) / count)
+  for _, tab in ipairs(box.Tabs) do tab._button.Size = UDim2.fromOffset(width, 34) end
+ end
+ parent._janitor:Add(BindWidthLayout(bar, resizeButtons))
  function box:SelectTab(value)
   local selected
   for index, tab in ipairs(self.Tabs) do
@@ -10172,6 +10189,7 @@ function Tab:AddTabBox(options)
   button.Size = UDim2.fromOffset(math.max(100, MeasureText(button.Text, 13) + 28), 34)
   button.BackgroundTransparency = 1
   BindTheme(button, "BackgroundColor3", "Accent")
+  Corner(button, 7)
   button.Parent = bar
   local body = Instance.new("Frame")
   body.BackgroundTransparency = 1
@@ -10181,10 +10199,10 @@ function Tab:AddTabBox(options)
   body.Visible = false
   body.Parent = frame
   local padding = Instance.new("UIPadding")
-  padding.PaddingLeft = UDim.new(0, 8)
-  padding.PaddingRight = UDim.new(0, 8)
+  padding.PaddingLeft = UDim.new(0, 0)
+  padding.PaddingRight = UDim.new(0, 0)
   padding.PaddingTop = UDim.new(0, 8)
-  padding.PaddingBottom = UDim.new(0, 8)
+  padding.PaddingBottom = UDim.new(0, 0)
   padding.Parent = body
   local list = Instance.new("UIListLayout")
   list.Padding = UDim.new(0, 8)
@@ -10195,6 +10213,7 @@ function Tab:AddTabBox(options)
   tab.Name = button.Text
   tab._button = button
   table.insert(self.Tabs, tab)
+  resizeButtons()
   parent._janitor:Add(button.Activated:Connect(function() box:SelectTab(tab) end))
   box:SelectTab(self.Selected or tab)
   return tab
