@@ -262,7 +262,14 @@ local function CreateWindowAcrylic(guiObject)
 		local visible = NullUI.Config.Blur ~= false
 			and gui.Visible and size.X > 2 and size.Y > 2
 		self.Part.Transparency = visible and ACRYLIC_TRANSPARENCY or 1
-		if not visible then return end
+		if not visible then self._lastGeometry = nil; return end
+  local renderPose = camera:GetRenderCFrame()
+  local last = self._lastGeometry
+  if last and last.Camera == camera and last.Pose == renderPose
+   and last.Size == size and last.Position == gui.AbsolutePosition
+   and last.Viewport == camera.ViewportSize and last.Fov == camera.FieldOfView then return end
+  self._lastGeometry = {Camera = camera, Pose = renderPose, Size = size,
+   Position = gui.AbsolutePosition, Viewport = camera.ViewportSize, Fov = camera.FieldOfView}
 
 		local edgeInset = math.clamp(camera.ViewportSize.Y * 0.012, 8, 18)
 		local position = gui.AbsolutePosition + Vector2.new(edgeInset, edgeInset)
@@ -281,7 +288,7 @@ local function CreateWindowAcrylic(guiObject)
 		local bottomRight3D = ScreenToWorld(position + panelSize)
 		local width = (topRight3D - topLeft3D).Magnitude
 		local height = (bottomRight3D - topRight3D).Magnitude
-		local renderCFrame = camera:GetRenderCFrame()
+		local renderCFrame = renderPose
 
 		self.Part.CFrame = CFrame.fromMatrix(
 			(topLeft3D + bottomRight3D) / 2,
@@ -1989,10 +1996,8 @@ local function SetupSmoothDrag(frame, handle, janitor)
 		end
 
 		local s = GetUIScale()
-		frame.Position = UDim2.fromOffset(
-			math.round(currentPosition.X / s),
-			math.round(currentPosition.Y / s)
-		)
+  local nextPosition = UDim2.fromOffset(math.round(currentPosition.X / s), math.round(currentPosition.Y / s))
+  if frame.Position ~= nextPosition then frame.Position = nextPosition end
 	end))
 
 	return api
@@ -3451,9 +3456,9 @@ function Window:AddTab(nameOrOpts)
    if not previousTab then
     self._tabIndicator.Position = UDim2.new(0, 0, 0, indicatorY())
    end
+   self._tabIndicator.BackgroundTransparency = 0.88
    self._indicatorTween = Tween(self._tabIndicator, {
 				Position = UDim2.new(0, 0, 0, indicatorY()),
-				BackgroundTransparency = 0.88,
 			}, 0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 		end
 
@@ -3520,12 +3525,16 @@ function Window:AddTab(nameOrOpts)
 	tabObj.Hidden = hidden
 
 	if not hidden then
-		jan:Add(tabButton:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
-			if self._currentTab == tabObj then
-    if self._indicatorTween then self._indicatorTween:Cancel(); self._indicatorTween = nil end
-				self._tabIndicator.Position = UDim2.new(0, 0, 0, indicatorY())
-			end
-		end))
+  local lastIndicatorY
+  jan:Add(tabButton:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
+   if self._currentTab ~= tabObj then return end
+   local y = indicatorY()
+   if lastIndicatorY and math.abs(y - lastIndicatorY) < 0.01 then return end
+   lastIndicatorY = y
+   if self._indicatorTween then self._indicatorTween:Cancel(); self._indicatorTween = nil end
+   self._tabIndicator.BackgroundTransparency = 0.88
+   self._tabIndicator.Position = UDim2.new(0, 0, 0, y)
+  end))
 
 		jan:Add(tabButton.MouseButton1Click:Connect(guardedSelect))
 
@@ -10015,7 +10024,13 @@ local function AnimateCollapsibleBody(body, chevron, janitor)
   end)
   heightTween:Play()
  end
- janitor:Add(body:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() apply(not initialized) end))
+ janitor:Add(body:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+  if disposed then return end
+  local height = collapsed and 0 or math.max(0, body.AbsoluteSize.Y / GetUIScale())
+  if math.abs(height - targetHeight) < 0.5 then return end
+  -- Layout changes must not restart an animation on every resize frame.
+  apply(true)
+ end))
  janitor:Add(function()
   disposed = true
   cancelHeight()
