@@ -2422,7 +2422,7 @@ function NullUI:CreateWindow(opts)
 	tabBar.BackgroundTransparency = 1
 	tabBar.BorderSizePixel = 0
 	tabBar.Position = UDim2.fromOffset(margin, 58)
-	tabBar.Size = UDim2.new(0, 130, 1, -(58 + margin))
+	tabBar.Size = UDim2.new(0, math.clamp(tonumber(opts.TabWidth) or 130, 110, 260), 1, -(58 + margin))
 	tabBar.ScrollBarThickness = 0
 	tabBar.ScrollingDirection = Enum.ScrollingDirection.Y
 	tabBar.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -2481,12 +2481,12 @@ function NullUI:CreateWindow(opts)
 	divider.BackgroundColor3 = Color3.new(1, 1, 1)
 	divider.BackgroundTransparency = 0.94
 	divider.BorderSizePixel = 0
-	divider.Position = UDim2.new(0, margin + 144, 0, 58)
+	divider.Position = UDim2.new(0, margin + math.clamp(tonumber(opts.TabWidth) or 130, 110, 260) + 14, 0, 58)
 	divider.Size = UDim2.new(0, 1, 1, -(58 + margin))
 	divider.ZIndex = Z.Content
 	divider.Parent = main
 
-	local contentX = margin + 144 + 16
+	local contentX = margin + math.clamp(tonumber(opts.TabWidth) or 130, 110, 260) + 14 + 16
 	local content = Instance.new("Frame")
 	content.Name = "Content"
 	content.BackgroundTransparency = 1
@@ -2519,6 +2519,8 @@ function NullUI:CreateWindow(opts)
 
 	local self = setmetatable({
 		_gui            = main,
+  _TabWidth = math.clamp(tonumber(opts.TabWidth) or 130, 110, 260),
+  _sidebarDivider = divider,
 		_content        = content,
 		_tabBar         = tabBar,
 		_tabIndicatorLayer = tabIndicatorLayer,
@@ -2713,9 +2715,23 @@ function Window:_RefreshFooter()
 	local showProfile = not hasButtons and self._UserInfoOptions.Enabled ~= false
 	self._UserInfoFrame.Visible = showProfile
 	local reserve = (hasButtons and 44) or (showProfile and 64) or 0
-	local size = UDim2.new(0, 130, 1, -(58 + NullUI.Theme.Margin + reserve))
+	local size = UDim2.new(0, self._TabWidth or 130, 1, -(58 + NullUI.Theme.Margin + reserve))
 	self._tabBar.Size = size
 	self._tabIndicatorLayer.Size = size
+end
+
+function Window:SetTabWidth(value)
+ self._TabWidth = math.clamp(tonumber(value) or 130, 110, 260)
+ local margin = NullUI.Theme.Margin
+ local contentX = margin + self._TabWidth + 30
+ self._sidebarDivider.Position = UDim2.fromOffset(margin + self._TabWidth + 14, 58)
+ self._content.Position = UDim2.fromOffset(contentX, 58)
+ self._content.Size = UDim2.new(1, -contentX - margin, 1, -(58 + margin))
+ if self._UserInfoFrame then self._UserInfoFrame.Size = UDim2.fromOffset(self._TabWidth, 54) end
+ if self._dock then self._dock.Size = UDim2.new(0, self._TabWidth, 0, self._dock.Size.Y.Offset) end
+ self:_RefreshFooter()
+ for _, tab in ipairs(self._tabs) do if tab._updateTabHeight then tab._updateTabHeight() end end
+ return self
 end
 
 function Window:SetUserInfo(options)
@@ -2729,7 +2745,7 @@ function Window:SetUserInfo(options)
 		frame.BackgroundTransparency = 1
 		frame.AnchorPoint = Vector2.new(0, 1)
 		frame.Position = UDim2.new(0, NullUI.Theme.Margin, 1, -NullUI.Theme.Margin)
-		frame.Size = UDim2.fromOffset(130, 54)
+		frame.Size = UDim2.fromOffset(self._TabWidth or 130, 54)
 		frame.ZIndex = Z.Content
 		frame.Parent = self._gui
 		local avatar = Instance.new("ImageLabel")
@@ -2924,7 +2940,7 @@ function Window:AddDockButton(opts)
 	local margin = NullUI.Theme.Margin
 
 	if not self._dock then
-		local shrunkSize = UDim2.new(0, 130, 1, -(58 + margin + DOCK_HEIGHT + 10))
+		local shrunkSize = UDim2.new(0, self._TabWidth or 130, 1, -(58 + margin + DOCK_HEIGHT + 10))
 		self._tabBar.Size = shrunkSize
 		self._tabIndicatorLayer.Size = shrunkSize
 
@@ -2933,7 +2949,7 @@ function Window:AddDockButton(opts)
 		dock.BackgroundTransparency = 1
 		dock.AnchorPoint = Vector2.new(0, 1)
 		dock.Position = UDim2.new(0, margin, 1, -margin)
-		dock.Size = UDim2.new(0, 130, 0, DOCK_HEIGHT)
+		dock.Size = UDim2.new(0, self._TabWidth or 130, 0, DOCK_HEIGHT)
 		dock.ZIndex = Z.Content
 		dock.Parent = self._gui
 
@@ -3374,7 +3390,8 @@ function Window:AddTab(nameOrOpts)
 	BindTheme(textLabel, "TextColor3", "TextDim")
 	textLabel.TextSize = 14
 	textLabel.TextXAlignment = Enum.TextXAlignment.Left
-	textLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	textLabel.TextTruncate = Enum.TextTruncate.None
+ textLabel.TextWrapped = true
 	textLabel.Size = UDim2.new(1, hasIcon and -26 or 0, 1, 0)
 	textLabel.LayoutOrder = 2
 	textLabel.ZIndex = Z.Content + 1
@@ -3431,13 +3448,23 @@ function Window:AddTab(nameOrOpts)
 
 	local myIndex = #self._tabs + 1
 
-	local function indicatorY()
+	local function updateTabHeight()
+  local available = math.max(24, (self._TabWidth or 130) - 24 - (hasIcon and 26 or 0))
+  local _, measuredHeight = MeasureText(name, 14, available)
+  local height = math.max(34, measuredHeight + 12)
+  tabButton.Size = UDim2.new(1, 0, 0, height)
+  if self._currentTab == tabObj then self._tabIndicator.Size = UDim2.new(1, 0, 0, height) end
+ end
+ tabObj._updateTabHeight = updateTabHeight
+ updateTabHeight()
+ local function indicatorY()
 		return (tabButton.AbsolutePosition.Y - self._tabBar.AbsolutePosition.Y) / GetUIScale()
 	end
 
 	local function selectTab()
 		if tabObj._SidebarGroup then tabObj._SidebarGroup:SetCollapsed(false) end
 		self._tabIndicator.Visible = not hidden
+  self._tabIndicator.Size = UDim2.new(1, 0, 0, tabButton.Size.Y.Offset)
 		if self._currentTab == tabObj then return end
 
 		self._tabSwitchToken = (self._tabSwitchToken or 0) + 1
@@ -10456,6 +10483,7 @@ function Window:AddAppearanceTab(options)
   controls:AddColorPicker({Text = item[2], Default = NullUI.Theme[token], Callback = function(color) NullUI:SetTheme({[token] = color}) end})
  end
  local sizing = tab:AddCollapsibleSection({Title = "Layout", Icon = "Lucide:layout-dashboard"})
+ sizing:AddSlider({Text = "Sidebar width", Min = 110, Max = 260, Default = self._TabWidth or 130, Callback = function(value) self:SetTabWidth(value) end})
  sizing:AddDropdown({Text = "Density", Options = {"comfortable","compact"}, Default = NullUI:GetDensity(), Callback = function(value) NullUI:SetDensity(value) end})
  sizing:AddButton({Text = "Reset window layout", Callback = function() self:ResetLayout() end})
  local imageSection = tab:AddCollapsibleSection({Title = "Background image"})

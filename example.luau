@@ -42,6 +42,7 @@ local Window = VindUI:CreateWindow({
 	Resizable = true,
 	UseBlur = true,
 	DefaultTab = "Home",
+	TabWidth = 145, -- Sidebar width
 	TabScrollbar = true, -- false hides the sidebar scrollbar; scrolling stays enabled
 	UserInfo = getgenv().CONFIG.UserInfo,
 })
