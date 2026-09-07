@@ -7602,7 +7602,7 @@ function Tab:AddColorPicker(opts)
 
 	local function syncFields()
 		if svCursor then svCursor.Position = UDim2.new(sat, 0, 1 - val, 0) end
-		if hueCursor then hueCursor.Position = UDim2.new(hue, 0, 0.5, 0) end
+		if hueCursor then hueCursor.Position = UDim2.new(0.5, 0, hue, 0) end
 		if svBox then svBox.BackgroundColor3 = Color3.new(1, 1, 1) end
 		if satGradient then
 			satGradient.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromHSV(hue, 1, 1))
@@ -7675,7 +7675,7 @@ function Tab:AddColorPicker(opts)
 	local function updateHue(inputPos)
 		if not hueBar or hueBar.AbsoluteSize.X <= 0 then return end
 		local rel, sz = hueBar.AbsolutePosition, hueBar.AbsoluteSize
-		hue = math.clamp((inputPos.X - rel.X) / sz.X, 0, 1)
+		hue = math.clamp((inputPos.Y - rel.Y) / sz.Y, 0, 1)
 		applyColor(true)
 	end
 
@@ -7718,12 +7718,13 @@ function Tab:AddColorPicker(opts)
 
 		local root = NullUI._Root
 		local mainWindow = self._window and self._window._gui or root
-		local popupW, popupH = 208, math.min(290, math.max(1, (ViewportSize().Y - 16) / GetUIScale()))
+		local popupW, popupH = 400, 306
 
 		popupBackdrop = MakePopupBackdrop(requestCloseFromBackdrop)
 
 		popupFrame = Instance.new("ScrollingFrame")
-		popupFrame.CanvasSize = UDim2.fromOffset(0, 290)
+		popupFrame.CanvasSize = UDim2.fromOffset(0, 0)
+		popupFrame.ScrollingEnabled = false
 		popupFrame.ScrollingDirection = Enum.ScrollingDirection.Y
 		popupFrame.ScrollBarThickness = 3
 		BindTheme(popupFrame, "ScrollBarImageColor3", "TextDim")
@@ -7742,8 +7743,21 @@ function Tab:AddColorPicker(opts)
 		local popupStroke = Stroke(popupFrame, Color3.new(1, 1, 1), 1, 0.92)
 		GlassLayer(popupFrame, 10, 0.985)
 
-		local px, py = ComputePopupPosition(mainWindow, card, popupW, popupH)
-		popupFrame.Position = UDim2.fromOffset(px, py)
+		popupFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+  local fit = Instance.new("UIScale")
+  fit.Parent = popupFrame
+  local function centerPicker()
+   if not popupFrame then return end
+   local scale = GetUIScale()
+   local view = ViewportSize()
+   fit.Scale = math.min(1, math.max(0.1, (view.X - 24) / (popupW * scale)), math.max(0.1, (view.Y - 24) / (popupH * scale)))
+   local pos, size = mainWindow.AbsolutePosition, mainWindow.AbsoluteSize
+   local halfW, halfH = popupW * scale * fit.Scale / 2, popupH * scale * fit.Scale / 2
+   local x = math.clamp(pos.X + size.X / 2, halfW + 12, math.max(halfW + 12, view.X - halfW - 12))
+   local y = math.clamp(pos.Y + size.Y / 2, halfH + 12, math.max(halfH + 12, view.Y - halfH - 12))
+   popupFrame.Position = UDim2.fromOffset(x / scale, y / scale)
+  end
+  centerPicker()
 
 		local pad = Instance.new("UIPadding")
 		pad.PaddingTop = UDim.new(0, 14)
@@ -7753,11 +7767,21 @@ function Tab:AddColorPicker(opts)
 		pad.Parent = popupFrame
 
 		local innerW = popupW - 28
+  local heading = Instance.new("TextLabel")
+  heading.BackgroundTransparency = 1
+  heading.Text = opts.Text or "Colorpicker"
+  heading.FontFace = NullUI.Theme.Font
+  heading.TextSize = 17
+  heading.TextXAlignment = Enum.TextXAlignment.Left
+  heading.Size = UDim2.new(1, 0, 0, 24)
+  heading.ZIndex = Z.Popup + 2
+  BindTheme(heading, "TextColor3", "Text")
+  heading.Parent = popupFrame
 
 		svBox = Instance.new("Frame")
 		svBox.Active = true
-		svBox.Position = UDim2.fromOffset(0, 0)
-		svBox.Size = UDim2.fromOffset(innerW, 104)
+		svBox.Position = UDim2.fromOffset(0, 38)
+		svBox.Size = UDim2.fromOffset(190, 178)
 		svBox.BackgroundColor3 = Color3.new(1, 1, 1)
 		svBox.BorderSizePixel = 0
 		svBox.ClipsDescendants = true
@@ -7814,8 +7838,8 @@ function Tab:AddColorPicker(opts)
 
 		hueBar = Instance.new("Frame")
 		hueBar.Active = true
-		hueBar.Position = UDim2.fromOffset(0, 114)
-		hueBar.Size = UDim2.fromOffset(innerW, 10)
+		hueBar.Position = UDim2.fromOffset(202, 38)
+		hueBar.Size = UDim2.fromOffset(12, 178)
 		hueBar.BackgroundColor3 = Color3.new(1, 1, 1)
 		hueBar.BorderSizePixel = 0
 		hueBar.ClipsDescendants = true
@@ -7833,6 +7857,7 @@ function Tab:AddColorPicker(opts)
 			ColorSequenceKeypoint.new(0.833, Color3.fromHSV(0.833, 1, 1)),
 			ColorSequenceKeypoint.new(1.000, Color3.fromHSV(1.000, 1, 1)),
 		})
+		hueGradient.Rotation = 90
 		hueGradient.Parent = hueBar
 
 		local hueCursorLayer = Instance.new("Frame")
@@ -7846,8 +7871,8 @@ function Tab:AddColorPicker(opts)
 
 		hueCursor = Instance.new("Frame")
 		hueCursor.AnchorPoint = Vector2.new(0.5, 0.5)
-		hueCursor.Position = UDim2.new(hue, 0, 0.5, 0)
-		hueCursor.Size = UDim2.fromOffset(6, 10)
+		hueCursor.Position = UDim2.new(0.5, 0, hue, 0)
+		hueCursor.Size = UDim2.fromOffset(12, 6)
 		hueCursor.BackgroundColor3 = Color3.new(1, 1, 1)
 		hueCursor.BorderSizePixel = 0
 		hueCursor.ZIndex = Z.Popup + 3
@@ -7855,32 +7880,32 @@ function Tab:AddColorPicker(opts)
 		Corner(hueCursor, 3)
 		Stroke(hueCursor, Color3.new(0, 0, 0), 1, 0.4)
 
-		local hexHolder, hexRef = MiniField(popupFrame, "HEX", innerW, Z.Popup)
-		hexHolder.Position = UDim2.fromOffset(0, 136)
+		local hexHolder, hexRef = MiniField(popupFrame, "HEX", 140, Z.Popup)
+		hexHolder.Position = UDim2.fromOffset(230, 34)
 		hexBox = hexRef
 
 		local rgbRow = Instance.new("Frame")
 		rgbRow.BackgroundTransparency = 1
-		rgbRow.Position = UDim2.fromOffset(0, 182)
-		rgbRow.Size = UDim2.fromOffset(innerW, 36)
+		rgbRow.Position = UDim2.fromOffset(230, 80)
+		rgbRow.Size = UDim2.fromOffset(140, 136)
 		rgbRow.ZIndex = Z.Popup + 1
 		rgbRow.Parent = popupFrame
 
-		local rHolder, rRef = MiniField(rgbRow, "R", 54, Z.Popup)
+		local rHolder, rRef = MiniField(rgbRow, "Red", 140, Z.Popup)
 		rHolder.Position = UDim2.fromOffset(0, 0)
 		rBox = rRef
 
-		local gHolder, gRef = MiniField(rgbRow, "G", 54, Z.Popup)
-		gHolder.Position = UDim2.fromOffset(62, 0)
+		local gHolder, gRef = MiniField(rgbRow, "Green", 140, Z.Popup)
+		gHolder.Position = UDim2.fromOffset(0, 46)
 		gBox = gRef
 
-		local bHolder, bRef = MiniField(rgbRow, "B", 56, Z.Popup)
-		bHolder.Position = UDim2.fromOffset(124, 0)
+		local bHolder, bRef = MiniField(rgbRow, "Blue", 140, Z.Popup)
+		bHolder.Position = UDim2.fromOffset(0, 92)
 		bBox = bRef
 
 		local btnRow = Instance.new("Frame")
 		btnRow.BackgroundTransparency = 1
-		btnRow.Position = UDim2.fromOffset(0, 232)
+		btnRow.Position = UDim2.fromOffset(0, 246)
 		btnRow.Size = UDim2.fromOffset(innerW, 30)
 		btnRow.ZIndex = Z.Popup + 1
 		btnRow.Parent = popupFrame
@@ -7990,7 +8015,7 @@ function Tab:AddColorPicker(opts)
 		}, 0.44, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 		Tween(popupStroke, { Transparency = 0.85 }, 0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 
-		followConn = FollowPopup(mainWindow, card, popupW, popupH, function() return popupFrame end)
+		followConn = RunService.RenderStepped:Connect(centerPicker)
 		jan:Add(followConn)
 	end
 
