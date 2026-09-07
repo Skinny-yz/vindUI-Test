@@ -3241,9 +3241,9 @@ function Window:AddDefaultCreditsPanel()
 	return panel
 end
 
-local TRANSITION_EXIT  = 0.18
-local TRANSITION_GAP   = 0.08
-local TRANSITION_ENTER = 0.32
+local TRANSITION_EXIT  = 0.28
+local TRANSITION_GAP   = 0.06
+local TRANSITION_ENTER = 0.46
 
 function Window:AddTab(nameOrOpts)
 	local opts = type(nameOrOpts) == "table" and nameOrOpts or { Name = nameOrOpts }
@@ -3462,10 +3462,9 @@ function Window:AddTab(nameOrOpts)
 		local function playEnter()
 			if self._tabSwitchToken ~= myToken then return end
 			pageGroup.Visible = true
-			pageGroup.GroupTransparency = 1
+			pageGroup.GroupTransparency = 0
 			pageGroup.Position = UDim2.fromOffset(direction * 20, 0)
 			Tween(pageGroup, {
-				GroupTransparency = 0,
 				Position = UDim2.fromOffset(0, 0),
 			}, TRANSITION_ENTER, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 		end
@@ -3473,10 +3472,10 @@ function Window:AddTab(nameOrOpts)
 		if previousTab and previousTab._group.Visible then
 			local g = previousTab._group
 			Tween(g, {
-				GroupTransparency = 1,
 				Position = UDim2.fromOffset(-direction * 20, 0),
 			}, TRANSITION_EXIT, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
 			task.delay(TRANSITION_EXIT, function()
+				if self._tabSwitchToken ~= myToken then return end
 				if g then g.Visible = false end
 				task.delay(TRANSITION_GAP, playEnter)
 			end)
