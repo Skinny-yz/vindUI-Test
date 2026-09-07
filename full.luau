@@ -586,6 +586,7 @@ local ThemePresets = {
 NullUI.Theme.ToggleOn = Color3.fromRGB(255,255,255)
 NullUI.Theme.ToggleOff = Color3.fromRGB(46,50,49)
 NullUI.Theme.ToggleKnob = Color3.fromRGB(226,230,228)
+NullUI.Theme.ToggleKnobOn = Color3.fromRGB(18,18,18)
 NullUI.Theme.SliderFill = Color3.fromRGB(255,255,255)
 NullUI.Theme.SliderKnob = Color3.fromRGB(255,255,255)
 NullUI.Theme.Card = Color3.fromRGB(255,255,255)
@@ -2757,6 +2758,9 @@ function Window:SetUserInfo(options)
 		avatar.ZIndex = Z.Content + 1
 		avatar.Parent = frame
 		Corner(avatar, 20)
+  local avatarOutline = Stroke(avatar, NullUI.Theme.TextDim, 1, 0.45)
+  avatarOutline.Name = "AvatarOutline"
+  BindTheme(avatarOutline, "Color", "TextDim")
 		local name = Instance.new("TextLabel")
 		name.BackgroundTransparency = 1
 		name.FontFace = NullUI.Theme.Font
@@ -3452,8 +3456,26 @@ function Window:AddTab(nameOrOpts)
 
 	local function updateTabHeight()
   local available = math.max(24, (self._TabWidth or 130) - 24 - (hasIcon and 26 or 0))
-  local _, measuredHeight = MeasureText(name, 14, available)
-  local height = math.max(34, measuredHeight + 12)
+  local lines, line = {}, ""
+  for paragraph in (name .. "\n"):gmatch("(.-)\n") do
+   line = ""
+   for word in paragraph:gmatch("%S+") do
+    local candidate = line == "" and word or (line .. " " .. word)
+    local width = MeasureText(candidate, 14, 10000)
+    if line ~= "" and width > available then
+     table.insert(lines, line)
+     line = word
+    else line = candidate end
+   end
+   table.insert(lines, line)
+  end
+  textLabel.Text = table.concat(lines, "\n")
+  textLabel.TextTruncate = Enum.TextTruncate.None
+  textLabel.TextWrapped = true
+  textLabel.TextYAlignment = Enum.TextYAlignment.Center
+  textLabel.Size = UDim2.new(0, available, 1, 0)
+  local _, measuredHeight = MeasureText(textLabel.Text, 14, available)
+  local height = math.max(34, #lines * 18 + 12, measuredHeight + 12)
   tabButton.Size = UDim2.new(1, 0, 0, height)
   if self._currentTab == tabObj then self._tabIndicator.Size = UDim2.new(1, 0, 0, height) end
  end
@@ -6718,7 +6740,7 @@ function Tab:AddToggle(opts)
 	knob.Size = UDim2.fromOffset(16, 16)
 	knob.Position = state and UDim2.new(1, -19, 0.5, 0) or UDim2.new(0, 3, 0.5, 0)
 	knob.AnchorPoint = Vector2.new(0, 0.5)
-	BindTheme(knob, "BackgroundColor3", "ToggleKnob")
+	BindTheme(knob, "BackgroundColor3", state and "ToggleKnobOn" or "ToggleKnob")
 	knob.BackgroundTransparency = state and 0 or 0.06
 	knob.BorderSizePixel = 0
 	knob.ZIndex = Z.Content + 2
@@ -6734,6 +6756,7 @@ function Tab:AddToggle(opts)
 	click.Parent = card
 
 	local function render()
+  BindTheme(knob, "BackgroundColor3", state and "ToggleKnobOn" or "ToggleKnob")
   BindTheme(switchBg, "BackgroundColor3", state and "ToggleOn" or "ToggleOff")
 		local anim = 0.28
 		local style, dir = Enum.EasingStyle.Quint, Enum.EasingDirection.InOut
@@ -6750,7 +6773,7 @@ function Tab:AddToggle(opts)
 			NumberSequenceKeypoint.new(1, state and 0 or 0.94),
 		})
 		Tween(knob, {
-			BackgroundColor3 = NullUI.Theme.ToggleKnob,
+			BackgroundColor3 = state and NullUI.Theme.ToggleKnobOn or NullUI.Theme.ToggleKnob,
 			BackgroundTransparency = state and 0 or 0.06,
 			Position = state and UDim2.new(1, -19, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
 		}, anim, style, dir)
@@ -10480,7 +10503,7 @@ function Window:AddAppearanceTab(options)
  opacitySection:AddSlider({Text = "Background transparency", Description = "0 = opaque, 100 = transparent", Min = 0, Max = 100, Default = (self._BackgroundTransparency or 0.15) * 100,
   Callback = function(value) self:SetBackgroundTransparency(value / 100) end})
  local controls = tab:AddCollapsibleSection({Title = "Control colors", Icon = "Lucide:sliders-horizontal"})
- for _, item in ipairs({{"ToggleOn","Toggle enabled"},{"ToggleOff","Toggle disabled"},{"ToggleKnob","Toggle knob"},{"SliderFill","Slider fill"},{"SliderKnob","Slider knob"},{"Card","Cards"}}) do
+ for _, item in ipairs({{"ToggleOn","Toggle enabled"},{"ToggleOff","Toggle disabled"},{"ToggleKnobOn","Toggle knob (on)"},{"ToggleKnob","Toggle knob (off)"},{"SliderFill","Slider fill"},{"SliderKnob","Slider knob"},{"Card","Cards"}}) do
   local token = item[1]
   controls:AddColorPicker({Text = item[2], Default = NullUI.Theme[token], Callback = function(color) NullUI:SetTheme({[token] = color}) end})
  end
