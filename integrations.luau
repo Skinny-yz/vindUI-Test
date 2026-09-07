@@ -6,6 +6,7 @@ return {
 Name = "chat-common", API = 1,
 Requires = {},
 Install = function(context)
+ local BindTheme = context.BindTheme
 	local AddContentScrollThumb = context.AddContentScrollThumb
 	local AddScrollbar = context.AddScrollbar
 	local Corner = context.Corner
@@ -45,7 +46,7 @@ local function CreateChatComposer(content, INPUT_H, BASE_Z, jan, placeholder)
 	inputBox.PlaceholderText = placeholder
 	inputBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 122)
 	inputBox.Text = ""
-	inputBox.TextColor3 = NullUI.Theme.Text
+	BindTheme(inputBox, "TextColor3", "Text")
 	inputBox.TextSize = 13
 	inputBox.TextXAlignment = Enum.TextXAlignment.Left
 	inputBox.TextYAlignment = Enum.TextYAlignment.Center
@@ -78,7 +79,7 @@ local function CreateChatComposer(content, INPUT_H, BASE_Z, jan, placeholder)
 	local sendIcon = Instance.new("ImageLabel")
 	sendIcon.BackgroundTransparency = 1
 	sendIcon.Image = ResolveIcon("send")
-	sendIcon.ImageColor3 = NullUI.Theme.Text
+	BindTheme(sendIcon, "ImageColor3", "Text")
 	sendIcon.Size = UDim2.fromOffset(14, 14)
 	sendIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 	sendIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -163,7 +164,7 @@ local function ChatHeaderButton(controls, BASE_Z, jan, icon, layoutOrder)
 		local ic = Instance.new("ImageLabel")
 		ic.BackgroundTransparency = 1
 		ic.Image = ResolveIcon(icon)
-		ic.ImageColor3 = NullUI.Theme.TextDim
+		BindTheme(ic, "ImageColor3", "TextDim")
 		ic.Size = UDim2.fromOffset(13, 13)
 		ic.AnchorPoint = Vector2.new(0.5, 0.5)
 		ic.Position = UDim2.fromScale(0.5, 0.5)
@@ -193,6 +194,7 @@ return {
 Name = "spotify", API = 1,
 Requires = {},
 Install = function(context)
+ local BindTheme = context.BindTheme
 	local ASSETS_FOLDER = context.ASSETS_FOLDER
 	local Corner = context.Corner
 	local EnsureAssetsFolder = context.EnsureAssetsFolder
@@ -281,7 +283,7 @@ function Window:AddSpotifyPanel(opts)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = opts.Title or "Spotify Player"
-	titleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.AnchorPoint = Vector2.new(0, 0.5)
@@ -303,7 +305,7 @@ function Window:AddSpotifyPanel(opts)
 	local closeIcon = Instance.new("ImageLabel")
 	closeIcon.BackgroundTransparency = 1
 	closeIcon.Image = ResolveIcon("x")
-	closeIcon.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(closeIcon, "ImageColor3", "TextDim")
 	closeIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 	closeIcon.Position = UDim2.fromScale(0.5, 0.5)
 	closeIcon.Size = UDim2.fromOffset(13, 13)
@@ -393,7 +395,7 @@ function Window:AddSpotifyPanel(opts)
 	statusLabel.BackgroundTransparency = 1
 	statusLabel.FontFace = NullUI.Theme.FontRegular
 	statusLabel.Text = "Bridge disconnected"
-	statusLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(statusLabel, "TextColor3", "TextDim")
 	statusLabel.TextSize = 12
 	statusLabel.TextXAlignment = Enum.TextXAlignment.Left
 	statusLabel.Position = UDim2.fromOffset(27, 0)
@@ -484,7 +486,7 @@ function Window:AddSpotifyPanel(opts)
 	trackLabel.BackgroundTransparency = 1
 	trackLabel.FontFace = NullUI.Theme.Font
 	trackLabel.Text = "Nothing playing"
-	trackLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(trackLabel, "TextColor3", "Text")
 	trackLabel.TextSize = 15
 	trackLabel.TextXAlignment = Enum.TextXAlignment.Left
 	trackLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -497,7 +499,7 @@ function Window:AddSpotifyPanel(opts)
 	artistLabel.BackgroundTransparency = 1
 	artistLabel.FontFace = NullUI.Theme.FontRegular
 	artistLabel.Text = "Connect your Spotify bridge"
-	artistLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(artistLabel, "TextColor3", "TextDim")
 	artistLabel.TextSize = 12
 	artistLabel.TextXAlignment = Enum.TextXAlignment.Left
 	artistLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -550,7 +552,7 @@ function Window:AddSpotifyPanel(opts)
 	seekBubbleLabel.BackgroundTransparency = 1
 	seekBubbleLabel.FontFace = NullUI.Theme.Font
 	seekBubbleLabel.Text = "0:00"
-	seekBubbleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(seekBubbleLabel, "TextColor3", "Text")
 	seekBubbleLabel.TextSize = 10
 	seekBubbleLabel.Size = UDim2.fromScale(1, 1)
 	seekBubbleLabel.ZIndex = Z.Content + 9
@@ -570,7 +572,7 @@ function Window:AddSpotifyPanel(opts)
 	timeLabel.BackgroundTransparency = 1
 	timeLabel.FontFace = NullUI.Theme.FontRegular
 	timeLabel.Text = "0:00"
-	timeLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(timeLabel, "TextColor3", "TextDim")
 	timeLabel.TextSize = 10
 	timeLabel.TextXAlignment = Enum.TextXAlignment.Left
 	timeLabel.Position = UDim2.fromOffset(100, 87)
@@ -582,7 +584,7 @@ function Window:AddSpotifyPanel(opts)
 	durationLabel.BackgroundTransparency = 1
 	durationLabel.FontFace = NullUI.Theme.FontRegular
 	durationLabel.Text = "0:00"
-	durationLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(durationLabel, "TextColor3", "TextDim")
 	durationLabel.TextSize = 10
 	durationLabel.TextXAlignment = Enum.TextXAlignment.Right
 	durationLabel.Position = UDim2.new(0.5, 50, 0, 87)
@@ -654,7 +656,7 @@ function Window:AddSpotifyPanel(opts)
 		label.BackgroundTransparency = 1
 		label.FontFace = NullUI.Theme.Font
 		label.Text = title
-		label.TextColor3 = NullUI.Theme.Text
+		BindTheme(label, "TextColor3", "Text")
 		label.TextSize = 12
 		label.TextXAlignment = Enum.TextXAlignment.Left
 		label.Position = UDim2.fromOffset(11, 6)
@@ -688,7 +690,7 @@ function Window:AddSpotifyPanel(opts)
 		local buttonImage = Instance.new("ImageLabel")
 		buttonImage.BackgroundTransparency = 1
 		buttonImage.Image = ResolveIcon(buttonIcon)
-		buttonImage.ImageColor3 = NullUI.Theme.Text
+		BindTheme(buttonImage, "ImageColor3", "Text")
 		buttonImage.AnchorPoint = Vector2.new(0.5, 0.5)
 		buttonImage.Position = UDim2.fromScale(0.5, 0.5)
 		buttonImage.Size = UDim2.fromOffset(14, 14)
@@ -701,7 +703,7 @@ function Window:AddSpotifyPanel(opts)
 		box.PlaceholderText = placeholder
 		box.PlaceholderColor3 = Color3.fromRGB(115, 120, 118)
 		box.Text = ""
-		box.TextColor3 = NullUI.Theme.Text
+		BindTheme(box, "TextColor3", "Text")
 		box.TextSize = 11
 		box.TextXAlignment = Enum.TextXAlignment.Left
 		box.BackgroundTransparency = 1
@@ -778,7 +780,7 @@ function Window:AddSpotifyPanel(opts)
 	favoritesTitle.BackgroundTransparency = 1
 	favoritesTitle.FontFace = NullUI.Theme.Font
 	favoritesTitle.Text = "Favorite playlists"
-	favoritesTitle.TextColor3 = NullUI.Theme.Text
+	BindTheme(favoritesTitle, "TextColor3", "Text")
 	favoritesTitle.TextSize = 14
 	favoritesTitle.TextXAlignment = Enum.TextXAlignment.Left
 	favoritesTitle.Position = UDim2.fromOffset(12, 8)
@@ -790,7 +792,7 @@ function Window:AddSpotifyPanel(opts)
 	favoritesHint.BackgroundTransparency = 1
 	favoritesHint.FontFace = NullUI.Theme.FontRegular
 	favoritesHint.Text = "Save and load your playlists with one tap"
-	favoritesHint.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(favoritesHint, "TextColor3", "TextDim")
 	favoritesHint.TextSize = 10
 	favoritesHint.TextXAlignment = Enum.TextXAlignment.Left
 	favoritesHint.Position = UDim2.fromOffset(12, 29)
@@ -810,7 +812,7 @@ function Window:AddSpotifyPanel(opts)
 	local favoritesSearchIcon = Instance.new("ImageLabel")
 	favoritesSearchIcon.BackgroundTransparency = 1
 	favoritesSearchIcon.Image = ResolveIcon("search")
-	favoritesSearchIcon.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(favoritesSearchIcon, "ImageColor3", "TextDim")
 	favoritesSearchIcon.AnchorPoint = Vector2.new(0, 0.5)
 	favoritesSearchIcon.Position = UDim2.new(0, 11, 0.5, 0)
 	favoritesSearchIcon.Size = UDim2.fromOffset(15, 15)
@@ -823,7 +825,7 @@ function Window:AddSpotifyPanel(opts)
 	favoritesSearchBox.PlaceholderText = "Search favorite playlists..."
 	favoritesSearchBox.PlaceholderColor3 = Color3.fromRGB(115, 120, 118)
 	favoritesSearchBox.Text = ""
-	favoritesSearchBox.TextColor3 = NullUI.Theme.Text
+	BindTheme(favoritesSearchBox, "TextColor3", "Text")
 	favoritesSearchBox.TextSize = 11
 	favoritesSearchBox.TextXAlignment = Enum.TextXAlignment.Left
 	favoritesSearchBox.Position = UDim2.fromOffset(36, 0)
@@ -845,7 +847,7 @@ function Window:AddSpotifyPanel(opts)
 	local addFavoriteIcon = Instance.new("ImageLabel")
 	addFavoriteIcon.BackgroundTransparency = 1
 	addFavoriteIcon.Image = ResolveIcon("heart-plus")
-	addFavoriteIcon.ImageColor3 = NullUI.Theme.Text
+	BindTheme(addFavoriteIcon, "ImageColor3", "Text")
 	addFavoriteIcon.AnchorPoint = Vector2.new(0, 0.5)
 	addFavoriteIcon.Position = UDim2.new(0, 16, 0.5, 0)
 	addFavoriteIcon.Size = UDim2.fromOffset(17, 17)
@@ -855,7 +857,7 @@ function Window:AddSpotifyPanel(opts)
 	saveFavoriteTitle.BackgroundTransparency = 1
 	saveFavoriteTitle.FontFace = NullUI.Theme.Font
 	saveFavoriteTitle.Text = "Save current playlist"
-	saveFavoriteTitle.TextColor3 = NullUI.Theme.Text
+	BindTheme(saveFavoriteTitle, "TextColor3", "Text")
 	saveFavoriteTitle.TextSize = 12
 	saveFavoriteTitle.TextXAlignment = Enum.TextXAlignment.Left
 	saveFavoriteTitle.Position = UDim2.fromOffset(44, 7)
@@ -866,7 +868,7 @@ function Window:AddSpotifyPanel(opts)
 	saveFavoriteHint.BackgroundTransparency = 1
 	saveFavoriteHint.FontFace = NullUI.Theme.FontRegular
 	saveFavoriteHint.Text = "Add the playlist loaded in the player to Favorites"
-	saveFavoriteHint.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(saveFavoriteHint, "TextColor3", "TextDim")
 	saveFavoriteHint.TextSize = 9
 	saveFavoriteHint.TextXAlignment = Enum.TextXAlignment.Left
 	saveFavoriteHint.Position = UDim2.fromOffset(44, 27)
@@ -876,7 +878,7 @@ function Window:AddSpotifyPanel(opts)
 	local saveFavoriteChevron = Instance.new("ImageLabel")
 	saveFavoriteChevron.BackgroundTransparency = 1
 	saveFavoriteChevron.Image = ResolveIcon("chevron-right")
-	saveFavoriteChevron.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(saveFavoriteChevron, "ImageColor3", "TextDim")
 	saveFavoriteChevron.AnchorPoint = Vector2.new(1, 0.5)
 	saveFavoriteChevron.Position = UDim2.new(1, -16, 0.5, 0)
 	saveFavoriteChevron.Size = UDim2.fromOffset(14, 14)
@@ -1010,7 +1012,7 @@ function Window:AddSpotifyPanel(opts)
 			empty.BackgroundTransparency = 1
 			empty.FontFace = NullUI.Theme.FontRegular
 			empty.Text = query ~= "" and "No saved playlist matches your search" or "No saved playlists yet"
-			empty.TextColor3 = NullUI.Theme.TextDim
+			BindTheme(empty, "TextColor3", "TextDim")
 			empty.TextSize = 11
 			empty.Size = UDim2.fromScale(1, 1)
 			empty.ZIndex = Z.Content + 3
@@ -1043,7 +1045,7 @@ function Window:AddSpotifyPanel(opts)
 			local playlistIcon = Instance.new("ImageLabel")
 			playlistIcon.BackgroundTransparency = 1
 			playlistIcon.Image = ResolveIcon("list-music")
-			playlistIcon.ImageColor3 = NullUI.Theme.Text
+			BindTheme(playlistIcon, "ImageColor3", "Text")
 			playlistIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 			playlistIcon.Position = UDim2.fromScale(0.5, 0.5)
 			playlistIcon.Size = UDim2.fromOffset(15, 15)
@@ -1053,7 +1055,7 @@ function Window:AddSpotifyPanel(opts)
 			name.BackgroundTransparency = 1
 			name.FontFace = NullUI.Theme.Font
 			name.Text = tostring(favorite.name or "Spotify playlist")
-			name.TextColor3 = NullUI.Theme.Text
+			BindTheme(name, "TextColor3", "Text")
 			name.TextSize = 11
 			name.TextXAlignment = Enum.TextXAlignment.Left
 			name.TextTruncate = Enum.TextTruncate.AtEnd
@@ -1065,7 +1067,7 @@ function Window:AddSpotifyPanel(opts)
 			subtitle.BackgroundTransparency = 1
 			subtitle.FontFace = NullUI.Theme.FontRegular
 			subtitle.Text = "Spotify playlist"
-			subtitle.TextColor3 = NullUI.Theme.TextDim
+			BindTheme(subtitle, "TextColor3", "TextDim")
 			subtitle.TextSize = 9
 			subtitle.TextXAlignment = Enum.TextXAlignment.Left
 			subtitle.Position = UDim2.fromOffset(60, 30)
@@ -1086,7 +1088,7 @@ function Window:AddSpotifyPanel(opts)
 			local loadFavoriteIcon = Instance.new("ImageLabel")
 			loadFavoriteIcon.BackgroundTransparency = 1
 			loadFavoriteIcon.Image = ResolveIcon("play")
-			loadFavoriteIcon.ImageColor3 = NullUI.Theme.Text
+			BindTheme(loadFavoriteIcon, "ImageColor3", "Text")
 			loadFavoriteIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 			loadFavoriteIcon.Position = UDim2.fromScale(0.5, 0.5)
 			loadFavoriteIcon.Size = UDim2.fromOffset(13, 13)
@@ -1389,6 +1391,7 @@ return {
 Name = "assistant", API = 1,
 Requires = {"chat-common"},
 Install = function(context)
+ local BindTheme = context.BindTheme
 	local ASSETS_FOLDER = context.ASSETS_FOLDER
 	local Corner = context.Corner
 	local EnsureAssetsFolder = context.EnsureAssetsFolder
@@ -1699,7 +1702,7 @@ function Window:AddChatPanel(opts)
 	local titleIcon = Instance.new("ImageLabel")
 	titleIcon.BackgroundTransparency = 1
 	titleIcon.Image = ResolveIcon(opts.Icon or "bot")
-	titleIcon.ImageColor3 = NullUI.Theme.Text
+	BindTheme(titleIcon, "ImageColor3", "Text")
 	titleIcon.Size = UDim2.fromOffset(14, 14)
 	titleIcon.LayoutOrder = 1
 	titleIcon.ZIndex = BASE_Z + 2
@@ -1709,7 +1712,7 @@ function Window:AddChatPanel(opts)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = opts.Title or "Assistant"
-	titleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.AutomaticSize = Enum.AutomaticSize.X
@@ -1834,7 +1837,7 @@ function Window:AddChatPanel(opts)
 			botIcon.BackgroundTransparency = 1
 			botIcon.ImageTransparency = 1
 			botIcon.Image = ResolveIcon("bot")
-			botIcon.ImageColor3 = NullUI.Theme.Accent
+			BindTheme(botIcon, "ImageColor3", "Accent")
 			botIcon.Size = UDim2.fromOffset(14, 14)
 			botIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 			botIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -1903,7 +1906,7 @@ function Window:AddChatPanel(opts)
 			if seg.kind == "code" then
 				local card = Instance.new("Frame")
 				card.Name = "CodeBlock"
-				card.BackgroundColor3 = NullUI.Theme.Background
+				BindTheme(card, "BackgroundColor3", "Background")
 				card.BackgroundTransparency = 0.1
 				card.BorderSizePixel = 0
 				card.ClipsDescendants = true
@@ -1931,7 +1934,7 @@ function Window:AddChatPanel(opts)
 				langLabel.BackgroundTransparency = 1
 				langLabel.FontFace = NullUI.Theme.FontRegular
 				langLabel.Text = seg.lang
-				langLabel.TextColor3 = NullUI.Theme.TextDim
+				BindTheme(langLabel, "TextColor3", "TextDim")
 				langLabel.TextSize = 11
 				langLabel.TextXAlignment = Enum.TextXAlignment.Left
 				langLabel.Position = UDim2.fromOffset(10, 0)
@@ -1956,7 +1959,7 @@ function Window:AddChatPanel(opts)
 					local ic = Instance.new("ImageLabel")
 					ic.BackgroundTransparency = 1
 					ic.Image = ResolveIcon(icon)
-					ic.ImageColor3 = NullUI.Theme.TextDim
+					BindTheme(ic, "ImageColor3", "TextDim")
 					ic.Size = UDim2.fromOffset(12, 12)
 					ic.AnchorPoint = Vector2.new(0.5, 0.5)
 					ic.Position = UDim2.fromScale(0.5, 0.5)
@@ -2041,7 +2044,7 @@ function Window:AddChatPanel(opts)
 				codeLabel.FontFace = Font.new(CHAT_CODE_FONT, Enum.FontWeight.Regular, Enum.FontStyle.Normal)
 				codeLabel.RichText = true
 				codeLabel.Text = HighlightLua(EscapeRichText(seg.content))
-				codeLabel.TextColor3 = NullUI.Theme.Text
+				BindTheme(codeLabel, "TextColor3", "Text")
 				codeLabel.TextSize = 12
 				codeLabel.TextWrapped = true
 				codeLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -2058,7 +2061,7 @@ function Window:AddChatPanel(opts)
 				label.FontFace = NullUI.Theme.FontRegular
 				label.RichText = true
 				label.Text = MarkdownToRichText(seg.content)
-				label.TextColor3 = NullUI.Theme.Text
+				BindTheme(label, "TextColor3", "Text")
 				label.TextTransparency = 1
 				label.TextSize = 13
 				label.TextWrapped = true
@@ -2118,7 +2121,7 @@ function Window:AddChatPanel(opts)
 		local toolIcon = Instance.new("ImageLabel")
 		toolIcon.BackgroundTransparency = 1
 		toolIcon.Image = ResolveIcon("wrench")
-		toolIcon.ImageColor3 = NullUI.Theme.Accent
+		BindTheme(toolIcon, "ImageColor3", "Accent")
 		toolIcon.Size = UDim2.fromOffset(11, 11)
 		toolIcon.LayoutOrder = 1
 		toolIcon.ZIndex = BASE_Z + 2
@@ -2128,7 +2131,7 @@ function Window:AddChatPanel(opts)
 		label.BackgroundTransparency = 1
 		label.FontFace = NullUI.Theme.FontRegular
 		label.Text = "Called tool: " .. tostring(name)
-		label.TextColor3 = NullUI.Theme.TextDim
+		BindTheme(label, "TextColor3", "TextDim")
 		label.TextSize = 11
 		label.AutomaticSize = Enum.AutomaticSize.XY
 		label.Size = UDim2.fromOffset(0, 14)
@@ -2170,7 +2173,7 @@ function Window:AddChatPanel(opts)
 		rowLayout.Parent = row
 
 		local avatar = Instance.new("Frame")
-		avatar.BackgroundColor3 = NullUI.Theme.Accent
+		BindTheme(avatar, "BackgroundColor3", "Accent")
 		avatar.BackgroundTransparency = 1
 		avatar.BorderSizePixel = 0
 		avatar.Size = UDim2.fromOffset(AVATAR, AVATAR)
@@ -2183,7 +2186,7 @@ function Window:AddChatPanel(opts)
 		botIcon.BackgroundTransparency = 1
 		botIcon.ImageTransparency = 1
 		botIcon.Image = ResolveIcon("bot")
-		botIcon.ImageColor3 = NullUI.Theme.Accent
+		BindTheme(botIcon, "ImageColor3", "Accent")
 		botIcon.Size = UDim2.fromOffset(14, 14)
 		botIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 		botIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -2205,7 +2208,7 @@ function Window:AddChatPanel(opts)
 		for i = 1, 3 do
 			local baseX = 10 + (i - 1) * 9
 			local dot = Instance.new("Frame")
-			dot.BackgroundColor3 = NullUI.Theme.TextDim
+			BindTheme(dot, "BackgroundColor3", "TextDim")
 			dot.BackgroundTransparency = 1
 			dot.BorderSizePixel = 0
 			dot.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -2640,6 +2643,7 @@ return {
 Name = "cloud", API = 1,
 Requires = {"chat-common"},
 Install = function(context)
+ local BindTheme = context.BindTheme
 	local Corner = context.Corner
 	local EnsureAssetsFolder = context.EnsureAssetsFolder
 	local HttpService = context.HttpService
@@ -3184,7 +3188,7 @@ function Window:AddGlobalChatPanel(opts)
 	local titleIcon = Instance.new("ImageLabel")
 	titleIcon.BackgroundTransparency = 1
 	titleIcon.Image = ResolveIcon(opts.Icon or "messages-square")
-	titleIcon.ImageColor3 = NullUI.Theme.Text
+	BindTheme(titleIcon, "ImageColor3", "Text")
 	titleIcon.Size = UDim2.fromOffset(14, 14)
 	titleIcon.LayoutOrder = 1
 	titleIcon.ZIndex = BASE_Z + 2
@@ -3194,7 +3198,7 @@ function Window:AddGlobalChatPanel(opts)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = opts.Title or "Chat"
-	titleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.AutomaticSize = Enum.AutomaticSize.X
@@ -3374,7 +3378,7 @@ function Window:AddGlobalChatPanel(opts)
 		label.BackgroundTransparency = 1
 		label.FontFace = NullUI.Theme.FontRegular
 		label.Text = text
-		label.TextColor3 = NullUI.Theme.Text
+		BindTheme(label, "TextColor3", "Text")
 		label.TextTransparency = 1
 		label.TextSize = 13
 		label.TextWrapped = true
@@ -3423,7 +3427,7 @@ function Window:AddGlobalChatPanel(opts)
 			reportIcon.BackgroundTransparency = 1
 			reportIcon.ImageTransparency = 1
 			reportIcon.Image = ResolveIcon("flag")
-			reportIcon.ImageColor3 = NullUI.Theme.TextDim
+			BindTheme(reportIcon, "ImageColor3", "TextDim")
 			reportIcon.Size = UDim2.fromOffset(11, 11)
 			reportIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 			reportIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -3554,7 +3558,7 @@ function Window:AddGlobalChatPanel(opts)
 
 		local popup = Instance.new("Frame")
 		popup.Name = "ChatSettingsPopup"
-		popup.BackgroundColor3 = NullUI.Theme.Surface
+		BindTheme(popup, "BackgroundColor3", "Surface")
 		popup.BackgroundTransparency = 0.05
 		popup.BorderSizePixel = 0
 		popup.AnchorPoint = Vector2.new(1, 0)
@@ -3591,7 +3595,7 @@ function Window:AddGlobalChatPanel(opts)
 			lbl.BackgroundTransparency = 1
 			lbl.FontFace = NullUI.Theme.FontRegular
 			lbl.Text = label
-			lbl.TextColor3 = NullUI.Theme.Text
+			BindTheme(lbl, "TextColor3", "Text")
 			lbl.TextSize = 12
 			lbl.TextXAlignment = Enum.TextXAlignment.Left
 			lbl.Size = UDim2.new(1, -30, 1, 0)
@@ -3614,7 +3618,7 @@ function Window:AddGlobalChatPanel(opts)
 			local checkIcon = Instance.new("ImageLabel")
 			checkIcon.BackgroundTransparency = 1
 			checkIcon.Image = ResolveIcon("check")
-			checkIcon.ImageColor3 = NullUI.Theme.Accent
+			BindTheme(checkIcon, "ImageColor3", "Accent")
 			checkIcon.ImageTransparency = getValue() and 0 or 1
 			checkIcon.Size = UDim2.fromOffset(11, 11)
 			checkIcon.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -3948,6 +3952,7 @@ return {
 Name = "feedback", API = 1,
 Requires = {},
 Install = function(context)
+ local BindTheme = context.BindTheme
 	local DetectFeedbackEvasion = context.DetectFeedbackEvasion
 	local HttpService = context.HttpService
 	local NormalizeFeedbackText = context.NormalizeFeedbackText

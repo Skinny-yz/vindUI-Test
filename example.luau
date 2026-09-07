@@ -1084,6 +1084,15 @@ end)
 
 Tabs.Empty = Window:AddTab({ Name = "Empty", Icon = "Material:grid_on" })
 
+local Examples = Window:AddTabGroup({Name = "Exemplos", Collapsed = false})
+local Sections = Examples:AddTab({Name = "Seções", Icon = "layers"})
+local Gameplay = Sections:AddCollapsibleSection({Title = "Controles"})
+Gameplay:AddToggle({Text = "Ativar recurso", Default = false})
+Gameplay:AddSlider({Text = "Intensidade", Min = 0, Max = 100, Default = 50})
+local Advanced = Sections:AddCollapsibleSection({Title = "Avançado", Collapsed = true})
+Advanced:AddTextbox({Text = "Nome", Default = "Exemplo"})
+Window:AddAppearanceTab()
+
 Window:SelectTab("Home")
 Window:Open()
 

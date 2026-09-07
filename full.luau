@@ -559,6 +559,42 @@ NullUI.Theme = {
 	AnimSlow       = 0.32,
 }
 
+local ThemeBindings = setmetatable({}, {__mode = "k"})
+local ThemePresets = {
+ Dark = {{16,16,16},{24,24,24},{240,240,240},{150,150,155},{255,255,255}},
+ Light = {{235,237,241},{215,220,228},{24,28,36},{80,89,104},{45,99,210}},
+ Midnight = {{13,18,32},{24,33,53},{232,239,255},{146,166,198},{111,159,255}},
+ Forest = {{15,26,22},{26,43,35},{232,246,237},{150,179,162},{108,209,153}},
+}
+local ThemeTokens = {"Background", "Surface", "Text", "TextDim", "Accent"}
+local function BindTheme(instance, property, token)
+ local bindings = ThemeBindings[instance] or {}
+ ThemeBindings[instance] = bindings
+ bindings[property] = token
+ instance[property] = NullUI.Theme[token]
+end
+function NullUI:SetTheme(value)
+ local colors = value
+ if type(value) == "string" then
+  assert(ThemePresets[value], "Unknown theme: " .. value)
+  colors = {}
+  for i, token in ipairs(ThemeTokens) do colors[token] = Color3.fromRGB(table.unpack(ThemePresets[value][i])) end
+  self._ThemeName = value
+ else
+  assert(type(value) == "table", "Theme must be a name or color table")
+  self._ThemeName = "Custom"
+ end
+ for token, color in pairs(colors) do
+  if typeof(self.Theme[token]) == "Color3" and typeof(color) == "Color3" then self.Theme[token] = color end
+ end
+ for instance, bindings in pairs(ThemeBindings) do
+  if instance.Parent then
+   for property, token in pairs(bindings) do instance[property] = self.Theme[token] end
+  end
+ end
+ return self
+end
+
 local Z = {
 	Glass    = 0,
 	Window   = 1,
@@ -572,6 +608,16 @@ local Z = {
 }
 
 local function Tween(instance, props, duration, style, direction)
+ local bindings = ThemeBindings[instance]
+ if bindings then
+  for property, value in pairs(props) do
+   if bindings[property] and value ~= NullUI.Theme[bindings[property]] then
+    for _, token in ipairs(ThemeTokens) do
+     if value == NullUI.Theme[token] then bindings[property] = token; break end
+    end
+   end
+  end
+ end
 	local t = TweenService:Create(
 		instance,
 		TweenInfo.new(
@@ -662,10 +708,10 @@ local function AddScrollbar(scroll)
 	scroll.HorizontalScrollBarInset = Enum.ScrollBarInset.None
 end
 
-local function AddContentScrollThumb(scroll, listLayout, thumbParent, janitor)
+local function AddContentScrollThumb(scroll, listLayout, thumbParent, janitor, rightInset)
 	local thumb = Instance.new("Frame")
 	thumb.Name = "ContentScrollThumb"
-	thumb.BackgroundColor3 = NullUI.Theme.TextDim
+	BindTheme(thumb, "BackgroundColor3", "TextDim")
 	thumb.BackgroundTransparency = 0.35
 	thumb.BorderSizePixel = 0
 	thumb.AnchorPoint = Vector2.new(1, 0)
@@ -706,7 +752,7 @@ local function AddContentScrollThumb(scroll, listLayout, thumbParent, janitor)
 		local maxThumbY = trackH - thumbH
 		local ratio = math.clamp(scroll.CanvasPosition.Y / overflow, 0, 1)
 		local topY = (scroll.AbsolutePosition.Y - parentPos.Y) + MARGIN + maxThumbY * ratio
-		local rightX = (scroll.AbsolutePosition.X + scroll.AbsoluteSize.X) - parentPos.X - MARGIN
+		local rightX = (scroll.AbsolutePosition.X + scroll.AbsoluteSize.X) - parentPos.X - (rightInset or MARGIN)
 		thumb.Visible = true
 		thumb.Size = UDim2.new(0, 3, thumbH / parentSize.Y, 0)
 		thumb.Position = UDim2.new(rightX / parentSize.X, 0, topY / parentSize.Y, 0)
@@ -1067,7 +1113,7 @@ function NullUI:Notify(opts)
 
 	local card = Instance.new("Frame")
 	card.Name = "Notification"
-	card.BackgroundColor3 = NullUI.Theme.Surface
+	BindTheme(card, "BackgroundColor3", "Surface")
 	card.BackgroundTransparency = 1
 	card.BorderSizePixel = 0
 	card.ClipsDescendants = true
@@ -1125,7 +1171,7 @@ function NullUI:Notify(opts)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = title
-	titleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextTransparency = 1
 	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -1141,7 +1187,7 @@ function NullUI:Notify(opts)
 		textLabel.BackgroundTransparency = 1
 		textLabel.FontFace = NullUI.Theme.FontRegular
 		textLabel.Text = text
-		textLabel.TextColor3 = NullUI.Theme.TextDim
+		BindTheme(textLabel, "TextColor3", "TextDim")
 		textLabel.TextTransparency = 1
 		textLabel.TextSize = 12
 		textLabel.TextWrapped = true
@@ -1357,7 +1403,7 @@ function NullUI:Confirm(opts)
 		local s = GetUIScale()
 		dialog.Position = UDim2.fromOffset(math.round(cx / s), math.round(cy / s))
 	end
-	dialog.BackgroundColor3 = NullUI.Theme.Surface
+	BindTheme(dialog, "BackgroundColor3", "Surface")
 	dialog.BackgroundTransparency = 1
 	dialog.BorderSizePixel = 0
 	dialog.Active = true
@@ -1406,7 +1452,7 @@ function NullUI:Confirm(opts)
 		textLabel.BackgroundTransparency = 1
 		textLabel.FontFace = NullUI.Theme.FontRegular
 		textLabel.Text = text
-		textLabel.TextColor3 = NullUI.Theme.TextDim
+		BindTheme(textLabel, "TextColor3", "TextDim")
 		textLabel.TextTransparency = 1
 		textLabel.TextSize = 14
 		textLabel.TextWrapped = true
@@ -1558,7 +1604,7 @@ function NullUI:Modal(opts)
 		local s = GetUIScale()
 		dialog.Position = UDim2.fromOffset(math.round(cx / s), math.round(cy / s))
 	end
-	dialog.BackgroundColor3 = NullUI.Theme.Surface
+	BindTheme(dialog, "BackgroundColor3", "Surface")
 	dialog.BackgroundTransparency = 1
 	dialog.BorderSizePixel = 0
 	dialog.Active = true
@@ -1607,7 +1653,7 @@ function NullUI:Modal(opts)
 		textLabel.BackgroundTransparency = 1
 		textLabel.FontFace = NullUI.Theme.FontRegular
 		textLabel.Text = text
-		textLabel.TextColor3 = NullUI.Theme.TextDim
+		BindTheme(textLabel, "TextColor3", "TextDim")
 		textLabel.TextTransparency = 1
 		textLabel.TextSize = 13
 		textLabel.TextWrapped = true
@@ -1691,7 +1737,7 @@ function NullUI:Modal(opts)
 		box.PlaceholderText = field.Placeholder or ""
 		box.PlaceholderColor3 = Color3.fromRGB(120, 120, 122)
 		box.Text = tostring(field.Default or "")
-		box.TextColor3 = NullUI.Theme.Text
+		BindTheme(box, "TextColor3", "Text")
 		box.TextSize = 13
 		box.TextXAlignment = Enum.TextXAlignment.Left
 		box.TextYAlignment = isTextarea and Enum.TextYAlignment.Top or Enum.TextYAlignment.Center
@@ -2057,7 +2103,7 @@ local function AddLeadingIcon(card, icon, height)
 	img.Name = "LeadingIcon"
 	img.BackgroundTransparency = 1
 	img.Image = asset
-	img.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(img, "ImageColor3", "TextDim")
 	img.Size = UDim2.fromOffset(16, 16)
 	img.AnchorPoint = Vector2.new(0, 0.5)
 	img.Position = UDim2.new(0, 14, 0.5, 0)
@@ -2076,7 +2122,7 @@ local function AddTitleDesc(card, x, rightReserve, title, description, baseHeigh
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = title
-	titleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.TextYAlignment = Enum.TextYAlignment.Center
@@ -2093,7 +2139,7 @@ local function AddTitleDesc(card, x, rightReserve, title, description, baseHeigh
 		descLabel.BackgroundTransparency = 1
 		descLabel.FontFace = NullUI.Theme.FontRegular
 		descLabel.Text = description
-		descLabel.TextColor3 = NullUI.Theme.TextDim
+		BindTheme(descLabel, "TextColor3", "TextDim")
 		descLabel.TextSize = 12
 		descLabel.TextWrapped = true
 		descLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -2159,7 +2205,7 @@ local function AddEmptyState(scroll, overlayParent, janitor)
 	local icon = Instance.new("ImageLabel")
 	icon.BackgroundTransparency = 1
 	icon.Image = ResolveIcon("frown")
-	icon.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(icon, "ImageColor3", "TextDim")
 	icon.Size = UDim2.fromOffset(26, 26)
 	icon.LayoutOrder = 1
 	icon.ZIndex = emptyState.ZIndex + 1
@@ -2169,7 +2215,7 @@ local function AddEmptyState(scroll, overlayParent, janitor)
 	label.BackgroundTransparency = 1
 	label.FontFace = NullUI.Theme.FontRegular
 	label.Text = "There's nothing here yet"
-	label.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(label, "TextColor3", "TextDim")
 	label.TextSize = 13
 	label.AutomaticSize = Enum.AutomaticSize.XY
 	label.Size = UDim2.fromOffset(0, 16)
@@ -2226,7 +2272,7 @@ function NullUI:CreateWindow(opts)
 	main.Size = size
 	main:SetAttribute("InitialSize", size)
 	main:SetAttribute("InitialPosition", main.Position)
-	main.BackgroundColor3 = NullUI.Theme.Background
+	BindTheme(main, "BackgroundColor3", "Background")
 	main.BackgroundTransparency = 1
 	main.BorderSizePixel = 0
 	main.ClipsDescendants = true
@@ -2277,7 +2323,7 @@ function NullUI:CreateWindow(opts)
 		local ic = Instance.new("ImageLabel")
 		ic.BackgroundTransparency = 1
 		ic.Image = ResolveIcon(icon)
-		ic.ImageColor3 = NullUI.Theme.TextDim
+		BindTheme(ic, "ImageColor3", "TextDim")
 		ic.Size = UDim2.fromOffset(14, 14)
 		ic.AnchorPoint = Vector2.new(0.5, 0.5)
 		ic.Position = UDim2.fromScale(0.5, 0.5)
@@ -2309,7 +2355,7 @@ function NullUI:CreateWindow(opts)
 		windowIcon.Name = "WindowIcon"
 		windowIcon.BackgroundTransparency = 1
 		windowIcon.Image = ResolveIcon(opts.Icon)
-		windowIcon.ImageColor3 = NullUI.Theme.Text
+		BindTheme(windowIcon, "ImageColor3", "Text")
 		windowIcon.Size = UDim2.fromOffset(20, 20)
 		windowIcon.AnchorPoint = Vector2.new(0, 0.5)
 		windowIcon.Position = UDim2.new(0, titleStartX, 0.5, 0)
@@ -2323,7 +2369,7 @@ function NullUI:CreateWindow(opts)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = opts.Title or "Window"
-	titleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextSize = 16
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.TextYAlignment = Enum.TextYAlignment.Center
@@ -2340,7 +2386,7 @@ function NullUI:CreateWindow(opts)
 		subLabel.BackgroundTransparency = 1
 		subLabel.FontFace = NullUI.Theme.FontRegular
 		subLabel.Text = opts.Subtitle
-		subLabel.TextColor3 = NullUI.Theme.TextDim
+		BindTheme(subLabel, "TextColor3", "TextDim")
 		subLabel.TextSize = 13
 		subLabel.TextXAlignment = Enum.TextXAlignment.Left
 		subLabel.TextYAlignment = Enum.TextYAlignment.Center
@@ -2371,10 +2417,23 @@ function NullUI:CreateWindow(opts)
 
 	AddScrollbar(tabBar)
 	if opts.TabScrollbar ~= false then
-		tabBar.ScrollBarThickness = 3
-		tabBar.ScrollBarImageTransparency = 0.35
-		tabBar.ScrollBarImageColor3 = NullUI.Theme.TextDim
-		tabBar.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
+		local thumb = AddContentScrollThumb(tabBar, tabBarLayout, main, jan, -8)
+		thumb.Name = "SidebarScrollThumb"
+		thumb.Active = true
+		local dragInput, startY, startCanvas
+		jan:Add(thumb.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				dragInput, startY, startCanvas = input, input.Position.Y, tabBar.CanvasPosition.Y
+			end
+		end))
+		jan:Add(UserInputService.InputChanged:Connect(function(input)
+			if not dragInput then return end
+			if input ~= dragInput and not (dragInput.UserInputType == Enum.UserInputType.MouseButton1 and input.UserInputType == Enum.UserInputType.MouseMovement) then return end
+			local overflow = math.max(0, tabBar.AbsoluteCanvasSize.Y - tabBar.AbsoluteWindowSize.Y)
+			local travel = math.max(1, tabBar.AbsoluteWindowSize.Y - 8 - thumb.AbsoluteSize.Y)
+			tabBar.CanvasPosition = Vector2.new(0, math.clamp(startCanvas + (input.Position.Y - startY) * overflow / travel, 0, overflow))
+		end))
+		jan:Add(UserInputService.InputEnded:Connect(function(input) if input == dragInput then dragInput = nil end end))
 	end
 
 	local tabIndicatorLayer = Instance.new("Frame")
@@ -2421,7 +2480,7 @@ function NullUI:CreateWindow(opts)
 	resizeHandle.BackgroundTransparency = 1
 	resizeHandle.AutoButtonColor = false
 	resizeHandle.Image = "rbxassetid://120997033468887"
-	resizeHandle.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(resizeHandle, "ImageColor3", "TextDim")
 	resizeHandle.ImageTransparency = 0.35
 	resizeHandle.AnchorPoint = Vector2.new(1, 1)
 	resizeHandle.Position = UDim2.new(1, -4, 1, -4)
@@ -2663,7 +2722,7 @@ function Window:SetUserInfo(options)
 		local name = Instance.new("TextLabel")
 		name.BackgroundTransparency = 1
 		name.FontFace = NullUI.Theme.Font
-		name.TextColor3 = NullUI.Theme.Text
+		BindTheme(name, "TextColor3", "Text")
 		name.TextSize = 14
 		name.TextXAlignment = Enum.TextXAlignment.Left
 		name.TextTruncate = Enum.TextTruncate.AtEnd
@@ -2673,7 +2732,7 @@ function Window:SetUserInfo(options)
 		name.Parent = frame
 		local username = name:Clone()
 		username.FontFace = NullUI.Theme.FontRegular
-		username.TextColor3 = NullUI.Theme.TextDim
+		BindTheme(username, "TextColor3", "TextDim")
 		username.TextSize = 12
 		username.Position = UDim2.fromOffset(48, 30)
 		username.Size = UDim2.new(1, -48, 0, 16)
@@ -2886,7 +2945,7 @@ function Window:AddDockButton(opts)
 	local icon = Instance.new("ImageLabel")
 	icon.BackgroundTransparency = 1
 	icon.Image = opts.Icon and ResolveIcon(opts.Icon) or ""
-	icon.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(icon, "ImageColor3", "TextDim")
 	icon.Size = UDim2.fromOffset(15, 15)
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Position = UDim2.fromScale(0.5, 0.5)
@@ -3014,7 +3073,7 @@ function Window:AddDefaultCreditsPanel()
 	local titleIcon = Instance.new("ImageLabel")
 	titleIcon.BackgroundTransparency = 1
 	titleIcon.Image = ResolveIcon("heart-handshake")
-	titleIcon.ImageColor3 = NullUI.Theme.Text
+	BindTheme(titleIcon, "ImageColor3", "Text")
 	titleIcon.Size = UDim2.fromOffset(14, 14)
 	titleIcon.LayoutOrder = 1
 	titleIcon.ZIndex = Z.Content + 3
@@ -3024,7 +3083,7 @@ function Window:AddDefaultCreditsPanel()
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = "Credits"
-	titleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.AutomaticSize = Enum.AutomaticSize.X
@@ -3048,15 +3107,15 @@ function Window:AddDefaultCreditsPanel()
 	local closeIcon = Instance.new("ImageLabel")
 	closeIcon.BackgroundTransparency = 1
 	closeIcon.Image = ResolveIcon("x")
-	closeIcon.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(closeIcon, "ImageColor3", "TextDim")
 	closeIcon.Size = UDim2.fromOffset(13, 13)
 	closeIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 	closeIcon.Position = UDim2.fromScale(0.5, 0.5)
 	closeIcon.ZIndex = Z.Content + 3
 	closeIcon.Parent = closeBtn
 
-	closeBtn.MouseEnter:Connect(function() closeIcon.ImageColor3 = NullUI.Theme.Text end)
-	closeBtn.MouseLeave:Connect(function() closeIcon.ImageColor3 = NullUI.Theme.TextDim end)
+	closeBtn.MouseEnter:Connect(function() BindTheme(closeIcon, "ImageColor3", "Text") end)
+	closeBtn.MouseLeave:Connect(function() BindTheme(closeIcon, "ImageColor3", "TextDim") end)
 	closeBtn.MouseButton1Click:Connect(function() panel.Close() end)
 
 	local divider = Instance.new("Frame")
@@ -3153,7 +3212,7 @@ function Window:AddDefaultCreditsPanel()
 		nameLabel.BackgroundTransparency = 1
 		nameLabel.FontFace = NullUI.Theme.Font
 		nameLabel.Text = credit.Name
-		nameLabel.TextColor3 = NullUI.Theme.Text
+		BindTheme(nameLabel, "TextColor3", "Text")
 		nameLabel.TextSize = 13.5
 		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 		nameLabel.Position = UDim2.fromOffset(62, 8)
@@ -3165,7 +3224,7 @@ function Window:AddDefaultCreditsPanel()
 		roleLabel.BackgroundTransparency = 1
 		roleLabel.FontFace = NullUI.Theme.FontRegular
 		roleLabel.Text = credit.Role
-		roleLabel.TextColor3 = NullUI.Theme.TextDim
+		BindTheme(roleLabel, "TextColor3", "TextDim")
 		roleLabel.TextSize = 11.5
 		roleLabel.TextWrapped = true
 		roleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -3233,7 +3292,7 @@ function Window:AddTab(nameOrOpts)
 	if isPrivate and not remembered then
 		lockBadge = Instance.new("Frame")
 		lockBadge.Name = "LockBadge"
-		lockBadge.BackgroundColor3 = NullUI.Theme.Background
+		BindTheme(lockBadge, "BackgroundColor3", "Background")
 		lockBadge.BackgroundTransparency = 0
 		lockBadge.BorderSizePixel = 0
 		lockBadge.Size = UDim2.fromOffset(13, 13)
@@ -3280,7 +3339,7 @@ function Window:AddTab(nameOrOpts)
 		iconLabel.Name = "Icon"
 		iconLabel.BackgroundTransparency = 1
 		iconLabel.Image = iconAsset
-		iconLabel.ImageColor3 = NullUI.Theme.TextDim
+		BindTheme(iconLabel, "ImageColor3", "TextDim")
 		iconLabel.Size = UDim2.fromOffset(16, 16)
 		iconLabel.LayoutOrder = 1
 		iconLabel.ZIndex = Z.Content + 1
@@ -3292,7 +3351,7 @@ function Window:AddTab(nameOrOpts)
 	textLabel.BackgroundTransparency = 1
 	textLabel.FontFace = NullUI.Theme.Font
 	textLabel.Text = name
-	textLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(textLabel, "TextColor3", "TextDim")
 	textLabel.TextSize = 14
 	textLabel.TextXAlignment = Enum.TextXAlignment.Left
 	textLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -3357,6 +3416,8 @@ function Window:AddTab(nameOrOpts)
 	end
 
 	local function selectTab()
+		if tabObj._SidebarGroup then tabObj._SidebarGroup:SetCollapsed(false) end
+		self._tabIndicator.Visible = not hidden
 		if self._currentTab == tabObj then return end
 
 		self._tabSwitchToken = (self._tabSwitchToken or 0) + 1
@@ -3524,7 +3585,7 @@ function Window:_PromptTabPassword(tabObj, callback)
 		local s = GetUIScale()
 		dialog.Position = UDim2.fromOffset(math.round(cx / s), math.round(cy / s))
 	end
-	dialog.BackgroundColor3 = NullUI.Theme.Background
+	BindTheme(dialog, "BackgroundColor3", "Background")
 	dialog.BackgroundTransparency = 1
 	dialog.BorderSizePixel = 0
 	dialog.ClipsDescendants = true
@@ -3561,7 +3622,7 @@ function Window:_PromptTabPassword(tabObj, callback)
 	local lockIcon = Instance.new("ImageLabel")
 	lockIcon.BackgroundTransparency = 1
 	lockIcon.Image = ResolveIcon("lock")
-	lockIcon.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(lockIcon, "ImageColor3", "TextDim")
 	lockIcon.Size = UDim2.fromOffset(18, 18)
 	lockIcon.Position = UDim2.fromOffset(0, 0)
 	lockIcon.ZIndex = Z.ModalTop + 2
@@ -3571,7 +3632,7 @@ function Window:_PromptTabPassword(tabObj, callback)
 	title.BackgroundTransparency = 1
 	title.FontFace = NullUI.Theme.Font
 	title.Text = "Private Tab"
-	title.TextColor3 = NullUI.Theme.Text
+	BindTheme(title, "TextColor3", "Text")
 	title.TextSize = 16
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Size = UDim2.new(1, -26, 1, 0)
@@ -3583,7 +3644,7 @@ function Window:_PromptTabPassword(tabObj, callback)
 	subtitle.BackgroundTransparency = 1
 	subtitle.FontFace = NullUI.Theme.FontRegular
 	subtitle.Text = ("Enter the password to unlock \"%s\""):format(tabObj.Name or "")
-	subtitle.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(subtitle, "TextColor3", "TextDim")
 	subtitle.TextSize = 12
 	subtitle.TextWrapped = true
 	subtitle.TextXAlignment = Enum.TextXAlignment.Left
@@ -3611,7 +3672,7 @@ function Window:_PromptTabPassword(tabObj, callback)
 	box.FontFace = NullUI.Theme.FontRegular
 	box.PlaceholderText = ""
 	box.Text = ""
-	box.TextColor3 = NullUI.Theme.Text
+	BindTheme(box, "TextColor3", "Text")
 	box.TextTransparency = 1
 	box.TextSize = 14
 	box.ClearTextOnFocus = false
@@ -3625,7 +3686,7 @@ function Window:_PromptTabPassword(tabObj, callback)
 	maskLabel.BackgroundTransparency = 1
 	maskLabel.FontFace = NullUI.Theme.FontRegular
 	maskLabel.Text = ""
-	maskLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(maskLabel, "TextColor3", "Text")
 	maskLabel.TextSize = 14
 	maskLabel.TextXAlignment = Enum.TextXAlignment.Left
 	maskLabel.Position = box.Position
@@ -3637,7 +3698,7 @@ function Window:_PromptTabPassword(tabObj, callback)
 	placeholderLabel.BackgroundTransparency = 1
 	placeholderLabel.FontFace = NullUI.Theme.FontRegular
 	placeholderLabel.Text = "Password"
-	placeholderLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(placeholderLabel, "TextColor3", "TextDim")
 	placeholderLabel.TextSize = 14
 	placeholderLabel.TextXAlignment = Enum.TextXAlignment.Left
 	placeholderLabel.Position = box.Position
@@ -3673,7 +3734,7 @@ function Window:_PromptTabPassword(tabObj, callback)
 	rememberLabel.BackgroundTransparency = 1
 	rememberLabel.FontFace = NullUI.Theme.FontRegular
 	rememberLabel.Text = "Remember me"
-	rememberLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(rememberLabel, "TextColor3", "TextDim")
 	rememberLabel.TextSize = 12
 	rememberLabel.TextXAlignment = Enum.TextXAlignment.Left
 	rememberLabel.AnchorPoint = Vector2.new(0, 0.5)
@@ -3742,7 +3803,7 @@ function Window:_PromptTabPassword(tabObj, callback)
 		lbl.BackgroundTransparency = 1
 		lbl.FontFace = NullUI.Theme.Font
 		lbl.Text = text_
-		lbl.TextColor3 = NullUI.Theme.Text
+		BindTheme(lbl, "TextColor3", "Text")
 		lbl.TextSize = 13
 		lbl.Size = UDim2.fromScale(1, 1)
 		lbl.ZIndex = Z.ModalTop + 2
@@ -3881,7 +3942,7 @@ function Window:_JumpToSearchable(entry)
 
 	task.delay(0.6, function()
 		if not inst.Parent then return end
-		local page = tabObj._page
+		local page = (tabObj._RootTab or tabObj)._page
 		if not page then return end
 		local targetY = math.max(
 			0,
@@ -3892,7 +3953,7 @@ function Window:_JumpToSearchable(entry)
 		local baseColor = inst.BackgroundColor3
 		local baseBg = inst.BackgroundTransparency
 
-		inst.BackgroundColor3 = NullUI.Theme.Accent
+		BindTheme(inst, "BackgroundColor3", "Accent")
 		Tween(inst, { BackgroundTransparency = 0.85 }, 0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 
 		task.delay(0.5, function()
@@ -3983,7 +4044,7 @@ function Window:_OpenSearch()
 		panel.Position = UDim2.fromOffset(px, py - 18)
 	end
 	panel.Size = UDim2.new(0, panelW, 0, HEADER_H)
-	panel.BackgroundColor3 = NullUI.Theme.Background
+	BindTheme(panel, "BackgroundColor3", "Background")
 	panel.BackgroundTransparency = 0.05
 	panel.GroupTransparency = 1
 	panel.BorderSizePixel = 0
@@ -4001,7 +4062,7 @@ function Window:_OpenSearch()
 	local searchIcon = Instance.new("ImageLabel")
 	searchIcon.BackgroundTransparency = 1
 	searchIcon.Image = ResolveIcon("search")
-	searchIcon.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(searchIcon, "ImageColor3", "TextDim")
 	searchIcon.Size = UDim2.fromOffset(16, 16)
 	searchIcon.AnchorPoint = Vector2.new(0, 0.5)
 	searchIcon.Position = UDim2.new(0, 16, 0, HEADER_H / 2)
@@ -4025,7 +4086,7 @@ function Window:_OpenSearch()
 	local closeIcon = Instance.new("ImageLabel")
 	closeIcon.BackgroundTransparency = 1
 	closeIcon.Image = ResolveIcon("x")
-	closeIcon.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(closeIcon, "ImageColor3", "TextDim")
 	closeIcon.Size = UDim2.fromOffset(12, 12)
 	closeIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 	closeIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -4048,7 +4109,7 @@ function Window:_OpenSearch()
 	box.FontFace = NullUI.Theme.FontRegular
 	box.PlaceholderText = "Search everything..."
 	box.Text = ""
-	box.TextColor3 = NullUI.Theme.Text
+	BindTheme(box, "TextColor3", "Text")
 	box.PlaceholderColor3 = NullUI.Theme.TextDim
 	box.TextSize = 15
 	box.ClearTextOnFocus = false
@@ -4104,7 +4165,7 @@ function Window:_OpenSearch()
 	emptyLabel.BackgroundTransparency = 1
 	emptyLabel.FontFace = NullUI.Theme.FontRegular
 	emptyLabel.Text = "No results"
-	emptyLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(emptyLabel, "TextColor3", "TextDim")
 	emptyLabel.TextSize = 13
 	emptyLabel.Visible = false
 	emptyLabel.Position = UDim2.new(0, 0, 0, HEADER_H + 9)
@@ -4156,7 +4217,7 @@ function Window:_OpenSearch()
 			titleLbl.BackgroundTransparency = 1
 			titleLbl.FontFace = NullUI.Theme.Font
 			titleLbl.Text = entry.title
-			titleLbl.TextColor3 = NullUI.Theme.Text
+			BindTheme(titleLbl, "TextColor3", "Text")
 			titleLbl.TextSize = 13
 			titleLbl.TextXAlignment = Enum.TextXAlignment.Left
 			titleLbl.TextTruncate = Enum.TextTruncate.AtEnd
@@ -4169,7 +4230,7 @@ function Window:_OpenSearch()
 			pathLbl.BackgroundTransparency = 1
 			pathLbl.FontFace = NullUI.Theme.FontRegular
 			pathLbl.Text = SearchEntryPath(entry.tabObj)
-			pathLbl.TextColor3 = NullUI.Theme.TextDim
+			BindTheme(pathLbl, "TextColor3", "TextDim")
 			pathLbl.TextSize = 11
 			pathLbl.TextXAlignment = Enum.TextXAlignment.Left
 			pathLbl.TextTruncate = Enum.TextTruncate.AtEnd
@@ -4313,7 +4374,7 @@ function Tab:AddSubTab(nameOrOpts)
 
 		self._subTabScrollTrack = Instance.new("Frame")
 		self._subTabScrollTrack.Name = "SubTabScrollTrack"
-		self._subTabScrollTrack.BackgroundColor3 = NullUI.Theme.TextDim
+		self.BindTheme(_subTabScrollTrack, "BackgroundColor3", "TextDim")
 		self._subTabScrollTrack.BackgroundTransparency = 0.85
 		self._subTabScrollTrack.BorderSizePixel = 0
 		self._subTabScrollTrack.Position = UDim2.new(0, 2, 0, 48)
@@ -4325,7 +4386,7 @@ function Tab:AddSubTab(nameOrOpts)
 
 		self._subTabScrollThumb = Instance.new("Frame")
 		self._subTabScrollThumb.Name = "Thumb"
-		self._subTabScrollThumb.BackgroundColor3 = NullUI.Theme.TextDim
+		self.BindTheme(_subTabScrollThumb, "BackgroundColor3", "TextDim")
 		self._subTabScrollThumb.BackgroundTransparency = 0.35
 		self._subTabScrollThumb.BorderSizePixel = 0
 		self._subTabScrollThumb.Size = UDim2.new(0, 40, 1, 0)
@@ -4425,7 +4486,7 @@ function Tab:AddSubTab(nameOrOpts)
 		ic = Instance.new("ImageLabel")
 		ic.BackgroundTransparency = 1
 		ic.Image = iconAsset
-		ic.ImageColor3 = NullUI.Theme.TextDim
+		BindTheme(ic, "ImageColor3", "TextDim")
 		ic.Size = UDim2.fromOffset(16, 16)
 		ic.LayoutOrder = 1
 		ic.ZIndex = Z.Content + 1
@@ -4436,7 +4497,7 @@ function Tab:AddSubTab(nameOrOpts)
 	lbl.BackgroundTransparency = 1
 	lbl.FontFace = NullUI.Theme.Font
 	lbl.Text = title
-	lbl.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(lbl, "TextColor3", "TextDim")
 	lbl.TextSize = 13
 	lbl.TextXAlignment = Enum.TextXAlignment.Center
 	lbl.TextYAlignment = Enum.TextYAlignment.Center
@@ -4633,7 +4694,7 @@ function Tab:AddLabel(text)
 	label.BackgroundTransparency = 1
 	label.FontFace = NullUI.Theme.FontRegular
 	label.Text = text
-	label.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(label, "TextColor3", "TextDim")
 	label.TextSize = 13
 	label.TextWrapped = true
 	label.TextXAlignment = Enum.TextXAlignment.Left
@@ -4667,7 +4728,7 @@ function Tab:AddSection(textOrOpts, maybeIcon)
 		local img = Instance.new("ImageLabel")
 		img.BackgroundTransparency = 1
 		img.Image = iconAsset
-		img.ImageColor3 = NullUI.Theme.TextDim
+		BindTheme(img, "ImageColor3", "TextDim")
 		img.Size = UDim2.fromOffset(13, 13)
 		img.Position = UDim2.fromOffset(2, 8)
 		img.ZIndex = Z.Content + 1
@@ -4679,7 +4740,7 @@ function Tab:AddSection(textOrOpts, maybeIcon)
 	label.BackgroundTransparency = 1
 	label.FontFace = NullUI.Theme.Font
 	label.Text = string.upper(text)
-	label.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(label, "TextColor3", "TextDim")
 	label.TextSize = 12
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.TextTruncate = Enum.TextTruncate.AtEnd
@@ -4755,7 +4816,7 @@ function Tab:AddLineText(text)
 	label.BackgroundTransparency = 1
 	label.FontFace = NullUI.Theme.FontRegular
 	label.Text = text
-	label.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(label, "TextColor3", "TextDim")
 	label.TextSize = 12
 	label.AnchorPoint = Vector2.new(0.5, 0.5)
 	label.Position = UDim2.fromScale(0.5, 0.5)
@@ -4834,7 +4895,7 @@ function Tab:AddParagraph(opts)
 			local img = Instance.new("ImageLabel")
 			img.BackgroundTransparency = 1
 			img.Image = iconAsset
-			img.ImageColor3 = NullUI.Theme.Text
+			BindTheme(img, "ImageColor3", "Text")
 			img.Size = UDim2.fromOffset(15, 15)
 			img.LayoutOrder = 1
 			img.ZIndex = Z.Content + 2
@@ -4845,7 +4906,7 @@ function Tab:AddParagraph(opts)
 		titleLabel.BackgroundTransparency = 1
 		titleLabel.FontFace = NullUI.Theme.Font
 		titleLabel.Text = opts.Title
-		titleLabel.TextColor3 = NullUI.Theme.Text
+		BindTheme(titleLabel, "TextColor3", "Text")
 		titleLabel.TextSize = 14
 		titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 		titleLabel.TextYAlignment = Enum.TextYAlignment.Center
@@ -4864,7 +4925,7 @@ function Tab:AddParagraph(opts)
 	textLabel.BackgroundTransparency = 1
 	textLabel.FontFace = NullUI.Theme.FontRegular
 	textLabel.Text = opts.Text or ""
-	textLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(textLabel, "TextColor3", "TextDim")
 	textLabel.TextSize = 13
 	textLabel.TextWrapped = true
 	textLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -4921,7 +4982,7 @@ local function BuildStarRow(parent, layoutOrder, maxStars, starColor, starSize, 
 		button.BackgroundTransparency = 1
 		button.AutoButtonColor = false
 		button.Image = starOutline
-		button.ImageColor3 = NullUI.Theme.TextDim
+		BindTheme(button, "ImageColor3", "TextDim")
 		button.Size = UDim2.fromOffset(starSize, starSize)
 		button.LayoutOrder = i
 		button.ZIndex = Z.Content + 2
@@ -5136,7 +5197,7 @@ local function BuildFeedbackRow(parent, layoutOrder, rowH, placeholder, buttonIc
 	box.PlaceholderText = placeholder or "Give us some feedback!"
 	box.PlaceholderColor3 = Color3.fromRGB(120, 120, 122)
 	box.Text = ""
-	box.TextColor3 = NullUI.Theme.Text
+	BindTheme(box, "TextColor3", "Text")
 	box.TextSize = 13
 	box.TextXAlignment = Enum.TextXAlignment.Left
 	box.TextYAlignment = Enum.TextYAlignment.Center
@@ -5170,7 +5231,7 @@ local function BuildFeedbackRow(parent, layoutOrder, rowH, placeholder, buttonIc
 	local sendIcon = Instance.new("ImageLabel")
 	sendIcon.BackgroundTransparency = 1
 	sendIcon.Image = ResolveIcon(buttonIcon or "send")
-	sendIcon.ImageColor3 = NullUI.Theme.Text
+	BindTheme(sendIcon, "ImageColor3", "Text")
 	sendIcon.Size = UDim2.fromOffset(12, 12)
 	sendIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 	sendIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -5209,7 +5270,7 @@ function Tab:AddRating(opts)
 		titleLabel.BackgroundTransparency = 1
 		titleLabel.FontFace = NullUI.Theme.Font
 		titleLabel.Text = opts.Title
-		titleLabel.TextColor3 = NullUI.Theme.Text
+		BindTheme(titleLabel, "TextColor3", "Text")
 		titleLabel.TextSize = 14
 		titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 		titleLabel.Size = UDim2.new(1, 0, 0, 16)
@@ -5266,7 +5327,7 @@ function Tab:AddButton(opts)
 	local chev = Instance.new("ImageLabel")
 	chev.BackgroundTransparency = 1
 	chev.Image = ResolveIcon("chevron-right")
-	chev.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(chev, "ImageColor3", "TextDim")
 	chev.Size = UDim2.fromOffset(14, 14)
 	chev.AnchorPoint = Vector2.new(1, 0.5)
 	chev.Position = UDim2.new(1, -16, 0.5, 0)
@@ -5383,7 +5444,7 @@ function Tab:AddCard(opts)
 		local chev = Instance.new("ImageLabel")
 		chev.BackgroundTransparency = 1
 		chev.Image = ResolveIcon("chevron-right")
-		chev.ImageColor3 = NullUI.Theme.TextDim
+		BindTheme(chev, "ImageColor3", "TextDim")
 		chev.Size = UDim2.fromOffset(14, 14)
 		chev.AnchorPoint = Vector2.new(1, 0.5)
 		chev.Position = UDim2.new(1, -16, 0.5, 0)
@@ -5434,7 +5495,7 @@ function Tab:AddCard(opts)
 		footerLabel.BackgroundTransparency = 1
 		footerLabel.FontFace = NullUI.Theme.Font
 		footerLabel.Text = opts.ButtonText
-		footerLabel.TextColor3 = NullUI.Theme.Text
+		BindTheme(footerLabel, "TextColor3", "Text")
 		footerLabel.TextSize = 13
 		footerLabel.Size = UDim2.fromScale(1, 1)
 		footerLabel.ZIndex = Z.Content + 2
@@ -5495,7 +5556,7 @@ function Tab:AddCard(opts)
 			ratingLabel.BackgroundTransparency = 1
 			ratingLabel.FontFace = NullUI.Theme.Font
 			ratingLabel.Text = ratingOpts.Title
-			ratingLabel.TextColor3 = NullUI.Theme.Text
+			BindTheme(ratingLabel, "TextColor3", "Text")
 			ratingLabel.TextSize = 13
 			ratingLabel.TextXAlignment = Enum.TextXAlignment.Left
 			ratingLabel.Size = UDim2.new(1, 0, 0, RATING_LABEL_H)
@@ -5577,7 +5638,7 @@ function Tab:AddChangelogEntry(opts)
 	versionLabel.BackgroundTransparency = 1
 	versionLabel.FontFace = NullUI.Theme.Font
 	versionLabel.Text = version
-	versionLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(versionLabel, "TextColor3", "Text")
 	versionLabel.TextSize = 14
 	versionLabel.TextXAlignment = Enum.TextXAlignment.Left
 	versionLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -5590,7 +5651,7 @@ function Tab:AddChangelogEntry(opts)
 		dateLabel.BackgroundTransparency = 1
 		dateLabel.FontFace = NullUI.Theme.FontRegular
 		dateLabel.Text = date
-		dateLabel.TextColor3 = NullUI.Theme.TextDim
+		BindTheme(dateLabel, "TextColor3", "TextDim")
 		dateLabel.TextSize = 12
 		dateLabel.TextXAlignment = Enum.TextXAlignment.Right
 		dateLabel.AnchorPoint = Vector2.new(1, 0)
@@ -5671,7 +5732,7 @@ function Tab:AddChangelogEntry(opts)
 		changeLabel.BackgroundTransparency = 1
 		changeLabel.FontFace = NullUI.Theme.FontRegular
 		changeLabel.Text = tostring(change.Text or "")
-		changeLabel.TextColor3 = NullUI.Theme.TextDim
+		BindTheme(changeLabel, "TextColor3", "TextDim")
 		changeLabel.TextSize = 12
 		changeLabel.TextXAlignment = Enum.TextXAlignment.Left
 		changeLabel.TextYAlignment = Enum.TextYAlignment.Top
@@ -5760,7 +5821,7 @@ function Tab:AddLoadoutGroup(opts)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = string.upper(title)
-	titleLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(titleLabel, "TextColor3", "TextDim")
 	titleLabel.TextSize = 12
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.Position = UDim2.fromOffset(15, 0)
@@ -5824,7 +5885,7 @@ function Tab:AddLoadoutGroup(opts)
 	btnLabel.BackgroundTransparency = 1
 	btnLabel.FontFace = NullUI.Theme.Font
 	btnLabel.Text = buttonText
-	btnLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(btnLabel, "TextColor3", "Text")
 	btnLabel.TextSize = 12
 	btnLabel.Size = UDim2.fromScale(1, 1)
 	btnLabel.ZIndex = Z.Content + 2
@@ -5891,7 +5952,7 @@ function Tab:AddInfoGrid(opts)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = title
-	titleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -5905,7 +5966,7 @@ function Tab:AddInfoGrid(opts)
 		descLabel.BackgroundTransparency = 1
 		descLabel.FontFace = NullUI.Theme.FontRegular
 		descLabel.Text = opts.Description
-		descLabel.TextColor3 = NullUI.Theme.TextDim
+		BindTheme(descLabel, "TextColor3", "TextDim")
 		descLabel.TextSize = 12
 		descLabel.TextWrapped = true
 		descLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -5963,7 +6024,7 @@ function Tab:AddInfoGrid(opts)
 			labelLabel.BackgroundTransparency = 1
 			labelLabel.FontFace = NullUI.Theme.Font
 			labelLabel.Text = tostring(item.Label or "")
-			labelLabel.TextColor3 = NullUI.Theme.Text
+			BindTheme(labelLabel, "TextColor3", "Text")
 			labelLabel.TextSize = 12
 			labelLabel.TextXAlignment = Enum.TextXAlignment.Left
 			labelLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -5976,7 +6037,7 @@ function Tab:AddInfoGrid(opts)
 			valueLabel.BackgroundTransparency = 1
 			valueLabel.FontFace = NullUI.Theme.FontRegular
 			valueLabel.Text = tostring(item.Value or "")
-			valueLabel.TextColor3 = NullUI.Theme.TextDim
+			BindTheme(valueLabel, "TextColor3", "TextDim")
 			valueLabel.TextSize = 11
 			valueLabel.TextXAlignment = Enum.TextXAlignment.Left
 			valueLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -6117,7 +6178,7 @@ function Tab:AddLeaderboard(opts)
 
 	local container = Instance.new("Frame")
 	container.Name = "Leaderboard"
-	container.BackgroundColor3 = NullUI.Theme.Surface
+	BindTheme(container, "BackgroundColor3", "Surface")
 	container.BackgroundTransparency = 0.35
 	container.BorderSizePixel = 0
 	container.ClipsDescendants = true
@@ -6132,7 +6193,7 @@ function Tab:AddLeaderboard(opts)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = title
-	titleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -6146,7 +6207,7 @@ function Tab:AddLeaderboard(opts)
 		descLabel.BackgroundTransparency = 1
 		descLabel.FontFace = NullUI.Theme.FontRegular
 		descLabel.Text = opts.Description
-		descLabel.TextColor3 = NullUI.Theme.TextDim
+		BindTheme(descLabel, "TextColor3", "TextDim")
 		descLabel.TextSize = 12
 		descLabel.TextWrapped = true
 		descLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -6176,7 +6237,7 @@ function Tab:AddLeaderboard(opts)
 	local revealIcon = Instance.new("ImageLabel")
 	revealIcon.BackgroundTransparency = 1
 	revealIcon.Image = ResolveIcon(revealMe and "eye" or "eye-off")
-	revealIcon.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(revealIcon, "ImageColor3", "TextDim")
 	revealIcon.Size = UDim2.fromOffset(14, 14)
 	revealIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 	revealIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -6218,7 +6279,7 @@ function Tab:AddLeaderboard(opts)
 	emptyLabel.BackgroundTransparency = 1
 	emptyLabel.FontFace = NullUI.Theme.FontRegular
 	emptyLabel.Text = "No one's run this yet"
-	emptyLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(emptyLabel, "TextColor3", "TextDim")
 	emptyLabel.TextSize = 12
 	emptyLabel.Position = UDim2.fromOffset(PAD, listY + 10)
 	emptyLabel.Size = UDim2.new(1, -PAD * 2, 0, 16)
@@ -6305,7 +6366,7 @@ function Tab:AddLeaderboard(opts)
 			badgeLabel.BackgroundTransparency = 1
 			badgeLabel.FontFace = NullUI.Theme.Font
 			badgeLabel.Text = "#" .. tostring(index)
-			badgeLabel.TextColor3 = NullUI.Theme.TextDim
+			BindTheme(badgeLabel, "TextColor3", "TextDim")
 			badgeLabel.TextSize = 11
 			badgeLabel.Size = UDim2.fromScale(1, 1)
 			badgeLabel.ZIndex = Z.Content + 4
@@ -6348,7 +6409,7 @@ function Tab:AddLeaderboard(opts)
 			local placeholder = Instance.new("ImageLabel")
 			placeholder.BackgroundTransparency = 1
 			placeholder.Image = ResolveIcon("user")
-			placeholder.ImageColor3 = NullUI.Theme.TextDim
+			BindTheme(placeholder, "ImageColor3", "TextDim")
 			placeholder.Size = UDim2.fromOffset(14, 14)
 			placeholder.AnchorPoint = Vector2.new(0.5, 0.5)
 			placeholder.Position = UDim2.fromScale(0.5, 0.5)
@@ -6361,7 +6422,7 @@ function Tab:AddLeaderboard(opts)
 		nameLabel.FontFace = NullUI.Theme.Font
 		nameLabel.Text = (item.NamePreview and item.NamePreview ~= "" and item.NamePreview or fallbackLabel(item.Identity))
 			.. (item.IsYou and "  (You)" or "")
-		nameLabel.TextColor3 = NullUI.Theme.Text
+		BindTheme(nameLabel, "TextColor3", "Text")
 		nameLabel.TextSize = 13
 		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 		nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -6374,7 +6435,7 @@ function Tab:AddLeaderboard(opts)
 		timeLabel.BackgroundTransparency = 1
 		timeLabel.FontFace = NullUI.Theme.FontRegular
 		timeLabel.Text = formatSeconds(item.Seconds)
-		timeLabel.TextColor3 = NullUI.Theme.TextDim
+		BindTheme(timeLabel, "TextColor3", "TextDim")
 		timeLabel.TextSize = 12
 		timeLabel.TextXAlignment = Enum.TextXAlignment.Right
 		timeLabel.AnchorPoint = Vector2.new(1, 0)
@@ -6717,7 +6778,7 @@ function Tab:AddSlider(opts)
 	label.BackgroundTransparency = 1
 	label.FontFace = NullUI.Theme.Font
 	label.Text = opts.Text or "Slider"
-	label.TextColor3 = NullUI.Theme.Text
+	BindTheme(label, "TextColor3", "Text")
 	label.TextSize = 14
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.TextTruncate = Enum.TextTruncate.AtEnd
@@ -6733,7 +6794,7 @@ function Tab:AddSlider(opts)
 		descLabel.BackgroundTransparency = 1
 		descLabel.FontFace = NullUI.Theme.FontRegular
 		descLabel.Text = opts.Description
-		descLabel.TextColor3 = NullUI.Theme.TextDim
+		BindTheme(descLabel, "TextColor3", "TextDim")
 		descLabel.TextSize = 12
 		descLabel.TextWrapped = true
 		descLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -6749,7 +6810,7 @@ function Tab:AddSlider(opts)
 	valueLabel.BackgroundTransparency = 1
 	valueLabel.FontFace = NullUI.Theme.FontRegular
 	valueLabel.Text = FormatNumber(value) .. (opts.Suffix or "")
-	valueLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(valueLabel, "TextColor3", "TextDim")
 	valueLabel.TextSize = 13
 	valueLabel.TextXAlignment = Enum.TextXAlignment.Right
 	valueLabel.AnchorPoint = Vector2.new(1, 0)
@@ -7038,7 +7099,7 @@ function Tab:AddDropdown(opts)
 	valueLabel.BackgroundTransparency = 1
 	valueLabel.FontFace = NullUI.Theme.FontRegular
 	valueLabel.Text = formatValue()
-	valueLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(valueLabel, "TextColor3", "TextDim")
 	valueLabel.TextSize = 13
 	valueLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	valueLabel.TextXAlignment = Enum.TextXAlignment.Right
@@ -7051,7 +7112,7 @@ function Tab:AddDropdown(opts)
 	local chevron = Instance.new("ImageLabel")
 	chevron.BackgroundTransparency = 1
 	chevron.Image = ResolveIcon("chevron-down")
-	chevron.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(chevron, "ImageColor3", "TextDim")
 	chevron.Size = UDim2.fromOffset(14, 14)
 	chevron.AnchorPoint = Vector2.new(1, 0.5)
 	chevron.Position = UDim2.new(1, -14, 0.5, 0)
@@ -7131,7 +7192,7 @@ function Tab:AddDropdown(opts)
 		popupFrame = Instance.new("CanvasGroup")
 		popupFrame.Name = "DropdownPopup"
 		popupFrame.Active = true
-		popupFrame.BackgroundColor3 = NullUI.Theme.Background
+		BindTheme(popupFrame, "BackgroundColor3", "Background")
 		popupFrame.BackgroundTransparency = 1
 		popupFrame.BorderSizePixel = 0
 		popupFrame.ZIndex = Z.Popup
@@ -7219,7 +7280,7 @@ function Tab:AddDropdown(opts)
 				checkIcon.Name = "Icon"
 				checkIcon.BackgroundTransparency = 1
 				checkIcon.Image = ResolveIcon("check")
-				checkIcon.ImageColor3 = NullUI.Theme.Background
+				BindTheme(checkIcon, "ImageColor3", "Background")
 				checkIcon.ImageTransparency = isOptionSelected(optionName) and 0 or 1
 				checkIcon.Size = UDim2.fromOffset(10, 10)
 				checkIcon.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -7234,7 +7295,7 @@ function Tab:AddDropdown(opts)
 				check.Name = "SingleCheck"
 				check.BackgroundTransparency = 1
 				check.Image = ResolveIcon("check")
-				check.ImageColor3 = NullUI.Theme.Text
+				BindTheme(check, "ImageColor3", "Text")
 				check.Size = UDim2.fromOffset(14, 14)
 				check.AnchorPoint = Vector2.new(1, 0.5)
 				check.Position = UDim2.new(1, -10, 0.5, 0)
@@ -7342,7 +7403,7 @@ function Tab:AddTextbox(opts)
 	local penIcon = Instance.new("ImageLabel")
 	penIcon.BackgroundTransparency = 1
 	penIcon.Image = ResolveIcon("pencil")
-	penIcon.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(penIcon, "ImageColor3", "TextDim")
 	penIcon.Size = UDim2.fromOffset(13, 13)
 	penIcon.AnchorPoint = Vector2.new(0, 0.5)
 	penIcon.Position = UDim2.new(0, 10, 0.5, 0)
@@ -7355,7 +7416,7 @@ function Tab:AddTextbox(opts)
 	box.PlaceholderText = opts.Placeholder or ""
 	box.PlaceholderColor3 = Color3.fromRGB(120, 120, 122)
 	box.Text = opts.Default or ""
-	box.TextColor3 = NullUI.Theme.Text
+	BindTheme(box, "TextColor3", "Text")
 	box.TextSize = 13
 	box.TextXAlignment = Enum.TextXAlignment.Left
 	box.TextYAlignment = Enum.TextYAlignment.Center
@@ -7439,7 +7500,7 @@ local function MiniField(parent, label, width, zBase)
 	lbl.BackgroundTransparency = 1
 	lbl.FontFace = NullUI.Theme.FontRegular
 	lbl.Text = label
-	lbl.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(lbl, "TextColor3", "TextDim")
 	lbl.TextSize = 11
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
 	lbl.Size = UDim2.new(1, 0, 0, 12)
@@ -7461,7 +7522,7 @@ local function MiniField(parent, label, width, zBase)
 	box.ClearTextOnFocus = false
 	box.FontFace = NullUI.Theme.FontRegular
 	box.Text = ""
-	box.TextColor3 = NullUI.Theme.Text
+	BindTheme(box, "TextColor3", "Text")
 	box.TextSize = 13
 	box.TextXAlignment = Enum.TextXAlignment.Center
 	box.TextYAlignment = Enum.TextYAlignment.Center
@@ -7665,12 +7726,12 @@ function Tab:AddColorPicker(opts)
 		popupFrame.CanvasSize = UDim2.fromOffset(0, 290)
 		popupFrame.ScrollingDirection = Enum.ScrollingDirection.Y
 		popupFrame.ScrollBarThickness = 3
-		popupFrame.ScrollBarImageColor3 = NullUI.Theme.TextDim
+		BindTheme(popupFrame, "ScrollBarImageColor3", "TextDim")
 		popupFrame.ScrollBarImageTransparency = 0.35
 		popupFrame.BorderSizePixel = 0
 		popupFrame.Name = "ColorPickerPopup"
 		popupFrame.Active = true
-		popupFrame.BackgroundColor3 = NullUI.Theme.Background
+		BindTheme(popupFrame, "BackgroundColor3", "Background")
 		popupFrame.BackgroundTransparency = 1
 		popupFrame.BorderSizePixel = 0
 		popupFrame.ClipsDescendants = true
@@ -7835,13 +7896,13 @@ function Tab:AddColorPicker(opts)
 			btn.BorderSizePixel = 0
 			btn.ZIndex = Z.Popup + 2
 			if filled then
-				btn.BackgroundColor3 = NullUI.Theme.Accent
+				BindTheme(btn, "BackgroundColor3", "Accent")
 				btn.BackgroundTransparency = 0
-				btn.TextColor3 = NullUI.Theme.Background
+				BindTheme(btn, "TextColor3", "Background")
 			else
 				btn.BackgroundColor3 = Color3.new(1, 1, 1)
 				btn.BackgroundTransparency = 0.92
-				btn.TextColor3 = NullUI.Theme.Text
+				BindTheme(btn, "TextColor3", "Text")
 			end
 			btn.Parent = btnRow
 			Corner(btn, 8)
@@ -7971,7 +8032,7 @@ function Tab:AddKeybind(opts)
 	local keyIcon = Instance.new("ImageLabel")
 	keyIcon.BackgroundTransparency = 1
 	keyIcon.Image = ResolveIcon("keyboard")
-	keyIcon.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(keyIcon, "ImageColor3", "TextDim")
 	keyIcon.Size = UDim2.fromOffset(13, 13)
 	keyIcon.AnchorPoint = Vector2.new(0, 0.5)
 	keyIcon.Position = UDim2.new(0, 10, 0.5, 0)
@@ -7982,7 +8043,7 @@ function Tab:AddKeybind(opts)
 	keyLabel.BackgroundTransparency = 1
 	keyLabel.FontFace = NullUI.Theme.FontRegular
 	keyLabel.Text = currentKey and currentKey.Name or "None"
-	keyLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(keyLabel, "TextColor3", "Text")
 	keyLabel.TextSize = 13
 	keyLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	keyLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -8089,7 +8150,7 @@ function Tab:AddConsole(opts)
 
 	local container = Instance.new("Frame")
 	container.Name = "Console"
-	container.BackgroundColor3 = NullUI.Theme.Surface
+	BindTheme(container, "BackgroundColor3", "Surface")
 	container.BackgroundTransparency = 0.35
 	container.BorderSizePixel = 0
 	container.ClipsDescendants = true
@@ -8126,7 +8187,7 @@ function Tab:AddConsole(opts)
 	local titleIcon = Instance.new("ImageLabel")
 	titleIcon.BackgroundTransparency = 1
 	titleIcon.Image = ResolveIcon("terminal")
-	titleIcon.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(titleIcon, "ImageColor3", "TextDim")
 	titleIcon.Size = UDim2.fromOffset(14, 14)
 	titleIcon.LayoutOrder = 1
 	titleIcon.ZIndex = Z.Content + 3
@@ -8136,7 +8197,7 @@ function Tab:AddConsole(opts)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = opts.Title or "Debug Console"
-	titleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextSize = 13
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -8177,7 +8238,7 @@ function Tab:AddConsole(opts)
 		local ic = Instance.new("ImageLabel")
 		ic.BackgroundTransparency = 1
 		ic.Image = ResolveIcon(icon)
-		ic.ImageColor3 = NullUI.Theme.TextDim
+		BindTheme(ic, "ImageColor3", "TextDim")
 		ic.Size = UDim2.fromOffset(13, 13)
 		ic.AnchorPoint = Vector2.new(0.5, 0.5)
 		ic.Position = UDim2.fromScale(0.5, 0.5)
@@ -8254,7 +8315,7 @@ function Tab:AddConsole(opts)
 	local emptyIcon = Instance.new("ImageLabel")
 	emptyIcon.BackgroundTransparency = 1
 	emptyIcon.Image = ResolveIcon("frown")
-	emptyIcon.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(emptyIcon, "ImageColor3", "TextDim")
 	emptyIcon.Size = UDim2.fromOffset(22, 22)
 	emptyIcon.LayoutOrder = 1
 	emptyIcon.ZIndex = Z.Content + 3
@@ -8264,7 +8325,7 @@ function Tab:AddConsole(opts)
 	emptyLabel.BackgroundTransparency = 1
 	emptyLabel.FontFace = NullUI.Theme.FontRegular
 	emptyLabel.Text = "No logs at the moment"
-	emptyLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(emptyLabel, "TextColor3", "TextDim")
 	emptyLabel.TextSize = 12
 	emptyLabel.AutomaticSize = Enum.AutomaticSize.XY
 	emptyLabel.Size = UDim2.fromOffset(0, 14)
@@ -8426,7 +8487,7 @@ function Tab:AddTable(opts)
 
 	local container = Instance.new("Frame")
 	container.Name = "Table"
-	container.BackgroundColor3 = NullUI.Theme.Surface
+	BindTheme(container, "BackgroundColor3", "Surface")
 	container.BackgroundTransparency = 0.35
 	container.BorderSizePixel = 0
 	container.ClipsDescendants = true
@@ -8441,7 +8502,7 @@ function Tab:AddTable(opts)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = title
-	titleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -8455,7 +8516,7 @@ function Tab:AddTable(opts)
 		descLabel.BackgroundTransparency = 1
 		descLabel.FontFace = NullUI.Theme.FontRegular
 		descLabel.Text = opts.Description
-		descLabel.TextColor3 = NullUI.Theme.TextDim
+		BindTheme(descLabel, "TextColor3", "TextDim")
 		descLabel.TextSize = 12
 		descLabel.TextWrapped = true
 		descLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -8495,7 +8556,7 @@ function Tab:AddTable(opts)
 		lbl.BackgroundTransparency = 1
 		lbl.FontFace = NullUI.Theme.Font
 		lbl.Text = tostring(col.Label or col.Key or "")
-		lbl.TextColor3 = NullUI.Theme.TextDim
+		BindTheme(lbl, "TextColor3", "TextDim")
 		lbl.TextSize = 12
 		lbl.TextXAlignment = colAlign(col)
 		lbl.TextTruncate = Enum.TextTruncate.AtEnd
@@ -8553,7 +8614,7 @@ function Tab:AddTable(opts)
 	emptyLabel.BackgroundTransparency = 1
 	emptyLabel.FontFace = NullUI.Theme.FontRegular
 	emptyLabel.Text = "No rows"
-	emptyLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(emptyLabel, "TextColor3", "TextDim")
 	emptyLabel.TextSize = 12
 	emptyLabel.Position = UDim2.fromOffset(PAD, scrollY + 10)
 	emptyLabel.Size = UDim2.new(1, -PAD * 2, 0, 16)
@@ -8592,7 +8653,7 @@ function Tab:AddTable(opts)
 				cell.BackgroundTransparency = 1
 				cell.FontFace = NullUI.Theme.FontRegular
 				cell.Text = tostring(row[col.Key] == nil and "" or row[col.Key])
-				cell.TextColor3 = NullUI.Theme.Text
+				BindTheme(cell, "TextColor3", "Text")
 				cell.TextSize = 12
 				cell.TextXAlignment = colAlign(col)
 				cell.TextTruncate = Enum.TextTruncate.AtEnd
@@ -8755,7 +8816,7 @@ function Tab:AddCardGrid(opts)
 		local searchIcon = Instance.new("ImageLabel")
 		searchIcon.BackgroundTransparency = 1
 		searchIcon.Image = ResolveIcon("search")
-		searchIcon.ImageColor3 = NullUI.Theme.TextDim
+		BindTheme(searchIcon, "ImageColor3", "TextDim")
 		searchIcon.Size = UDim2.fromOffset(13, 13)
 		searchIcon.AnchorPoint = Vector2.new(0, 0.5)
 		searchIcon.Position = UDim2.new(0, 10, 0.5, 0)
@@ -8768,7 +8829,7 @@ function Tab:AddCardGrid(opts)
 		searchBox.PlaceholderText = opts.SearchPlaceholder or "Search by name / tags..."
 		searchBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 122)
 		searchBox.Text = ""
-		searchBox.TextColor3 = NullUI.Theme.Text
+		BindTheme(searchBox, "TextColor3", "Text")
 		searchBox.TextSize = 13
 		searchBox.TextXAlignment = Enum.TextXAlignment.Left
 		searchBox.TextYAlignment = Enum.TextYAlignment.Center
@@ -8848,7 +8909,7 @@ function Tab:AddCardGrid(opts)
 	gridScroll.ElasticBehavior = Enum.ElasticBehavior.Never
 	gridScroll.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
 	gridScroll.ScrollBarThickness = showNativeScrollbar and (opts.ScrollBarThickness or 4) or 0
-	gridScroll.ScrollBarImageColor3 = NullUI.Theme.TextDim
+	BindTheme(gridScroll, "ScrollBarImageColor3", "TextDim")
 	gridScroll.ScrollBarImageTransparency = 0.35
 	gridScroll.AutomaticCanvasSize = Enum.AutomaticSize.None
 	gridScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -8952,7 +9013,7 @@ function Tab:AddCardGrid(opts)
 
 	local statusIcon = Instance.new("ImageLabel")
 	statusIcon.BackgroundTransparency = 1
-	statusIcon.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(statusIcon, "ImageColor3", "TextDim")
 	statusIcon.Size = UDim2.fromOffset(24, 24)
 	statusIcon.LayoutOrder = 1
 	statusIcon.Visible = false
@@ -8962,7 +9023,7 @@ function Tab:AddCardGrid(opts)
 	local statusLabel = Instance.new("TextLabel")
 	statusLabel.BackgroundTransparency = 1
 	statusLabel.FontFace = NullUI.Theme.FontRegular
-	statusLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(statusLabel, "TextColor3", "TextDim")
 	statusLabel.TextSize = 12
 	statusLabel.TextWrapped = true
 	statusLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -9001,7 +9062,7 @@ function Tab:AddCardGrid(opts)
 		popup = Instance.new("CanvasGroup")
 		popup.Name = "CardActionsPopup"
 		popup.Active = true
-		popup.BackgroundColor3 = NullUI.Theme.Background
+		BindTheme(popup, "BackgroundColor3", "Background")
 		popup.BackgroundTransparency = 0.04
 		popup.BorderSizePixel = 0
 		popup.Position = UDim2.fromOffset(math.round(px), math.round(py))
@@ -9125,7 +9186,7 @@ function Tab:AddCardGrid(opts)
 			local iconImg = Instance.new("ImageLabel")
 			iconImg.BackgroundTransparency = 1
 			iconImg.Image = ResolveIcon(item.Icon)
-			iconImg.ImageColor3 = NullUI.Theme.Accent
+			BindTheme(iconImg, "ImageColor3", "Accent")
 			iconImg.Size = UDim2.fromOffset(13, 13)
 			iconImg.AnchorPoint = Vector2.new(0.5, 0.5)
 			iconImg.Position = UDim2.fromScale(0.5, 0.5)
@@ -9145,7 +9206,7 @@ function Tab:AddCardGrid(opts)
 
 			local actionBadge = Instance.new("Frame")
 			actionBadge.Name = "LoadBadge"
-			actionBadge.BackgroundColor3 = NullUI.Theme.Accent
+			BindTheme(actionBadge, "BackgroundColor3", "Accent")
 			actionBadge.BackgroundTransparency = 0.8
 			actionBadge.BorderSizePixel = 0
 			actionBadge.AnchorPoint = Vector2.new(1, 0)
@@ -9158,7 +9219,7 @@ function Tab:AddCardGrid(opts)
 			local actionIcon = Instance.new("ImageLabel")
 			actionIcon.BackgroundTransparency = 1
 			actionIcon.Image = ResolveIcon(item.ActionIcon or "download")
-			actionIcon.ImageColor3 = NullUI.Theme.Accent
+			BindTheme(actionIcon, "ImageColor3", "Accent")
 			actionIcon.Size = UDim2.fromOffset(12, 12)
 			actionIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 			actionIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -9219,7 +9280,7 @@ function Tab:AddCardGrid(opts)
 		if hasMenuAction then
 			local menuBadge = Instance.new("Frame")
 			menuBadge.Name = "MenuBadge"
-			menuBadge.BackgroundColor3 = NullUI.Theme.Accent
+			BindTheme(menuBadge, "BackgroundColor3", "Accent")
 			menuBadge.BackgroundTransparency = 0.8
 			menuBadge.BorderSizePixel = 0
 			menuBadge.AnchorPoint = Vector2.new(1, 0)
@@ -9237,7 +9298,7 @@ function Tab:AddCardGrid(opts)
 			local menuIcon = Instance.new("ImageLabel")
 			menuIcon.BackgroundTransparency = 1
 			menuIcon.Image = ResolveIcon("Lucide:settings")
-			menuIcon.ImageColor3 = NullUI.Theme.Accent
+			BindTheme(menuIcon, "ImageColor3", "Accent")
 			menuIcon.Size = UDim2.fromOffset(12, 12)
 			menuIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 			menuIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -9262,7 +9323,7 @@ function Tab:AddCardGrid(opts)
 		titleLbl.BackgroundTransparency = 1
 		titleLbl.FontFace = NullUI.Theme.Font
 		titleLbl.Text = item.Title or "Untitled"
-		titleLbl.TextColor3 = NullUI.Theme.Text
+		BindTheme(titleLbl, "TextColor3", "Text")
 		titleLbl.TextSize = 13
 		titleLbl.TextXAlignment = Enum.TextXAlignment.Left
 		titleLbl.TextYAlignment = Enum.TextYAlignment.Center
@@ -9279,7 +9340,7 @@ function Tab:AddCardGrid(opts)
 			descLbl.BackgroundTransparency = 1
 			descLbl.FontFace = NullUI.Theme.FontRegular
 			descLbl.Text = item.Description
-			descLbl.TextColor3 = NullUI.Theme.TextDim
+			BindTheme(descLbl, "TextColor3", "TextDim")
 			descLbl.TextSize = 11
 			descLbl.TextWrapped = true
 			descLbl.TextTruncate = Enum.TextTruncate.None
@@ -9297,7 +9358,7 @@ function Tab:AddCardGrid(opts)
 			bylineLbl.BackgroundTransparency = 1
 			bylineLbl.FontFace = NullUI.Theme.FontRegular
 			bylineLbl.Text = item.Byline
-			bylineLbl.TextColor3 = NullUI.Theme.TextDim
+			BindTheme(bylineLbl, "TextColor3", "TextDim")
 			bylineLbl.TextTransparency = 0.25
 			bylineLbl.TextSize = 10
 			bylineLbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -9346,7 +9407,7 @@ function Tab:AddCardGrid(opts)
 				local statIcon = Instance.new("ImageLabel")
 				statIcon.BackgroundTransparency = 1
 				statIcon.Image = ResolveIcon(stat.Icon or "circle")
-				statIcon.ImageColor3 = NullUI.Theme.TextDim
+				BindTheme(statIcon, "ImageColor3", "TextDim")
 				statIcon.Size = UDim2.fromOffset(11, 11)
 				statIcon.LayoutOrder = 1
 				statIcon.ZIndex = Z.Content + 4
@@ -9356,7 +9417,7 @@ function Tab:AddCardGrid(opts)
 				statLbl.BackgroundTransparency = 1
 				statLbl.FontFace = NullUI.Theme.FontRegular
 				statLbl.Text = tostring(stat.Text or "")
-				statLbl.TextColor3 = NullUI.Theme.TextDim
+				BindTheme(statLbl, "TextColor3", "TextDim")
 				statLbl.TextSize = 10
 				statLbl.AutomaticSize = Enum.AutomaticSize.X
 				statLbl.Size = UDim2.fromOffset(0, 12)
@@ -9852,7 +9913,175 @@ do
 	end
 end
 
+function Window:AddTabGroup(options)
+	options = type(options) == "string" and {Name = options} or (options or {})
+	local group = {Tabs = {}, Collapsed = options.Collapsed == true}
+	local frame = Instance.new("Frame")
+	frame.Name = "TabGroup"
+	frame.ZIndex = Z.Content
+	frame.BackgroundTransparency = 1
+	frame.Size = UDim2.new(1, 0, 0, 0)
+	frame.AutomaticSize = Enum.AutomaticSize.Y
+	frame.Parent = self._tabBar
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, 4)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = frame
+	local header = Instance.new("TextButton")
+	header.AutoButtonColor = false
+	header.BackgroundTransparency = 1
+	header.Size = UDim2.new(1, 0, 0, 28)
+	header.FontFace = NullUI.Theme.Font
+	header.TextSize = 12
+	header.TextXAlignment = Enum.TextXAlignment.Left
+	header.TextTruncate = Enum.TextTruncate.AtEnd
+	BindTheme(header, "TextColor3", "TextDim")
+	header.Parent = frame
+	local body = Instance.new("Frame")
+	body.BackgroundTransparency = 1
+	body.Size = UDim2.new(1, 0, 0, 0)
+	body.AutomaticSize = Enum.AutomaticSize.Y
+	body.LayoutOrder = 1
+	body.Parent = frame
+	local list = Instance.new("UIListLayout")
+	list.Padding = UDim.new(0, 4)
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Parent = body
+	function group:SetCollapsed(value)
+		self.Collapsed = value == true
+		body.Visible = not self.Collapsed
+		for _, tab in ipairs(self.Tabs or {}) do
+			if tab._window._currentTab == tab then tab._window._tabIndicator.Visible = not self.Collapsed end
+		end
+		header.Text = (self.Collapsed and "▸  " or "▾  ") .. (options.Name or "Group")
+	end
+	function group:Toggle() self:SetCollapsed(not self.Collapsed) end
+	local window = self
+	function group:AddTab(opts)
+		local tab = window:AddTab(opts)
+		if not tab.Hidden then tab._button.Parent = body end
+		tab._SidebarGroup = self
+		table.insert(self.Tabs, tab)
+		return tab
+	end
+	self._janitor:Add(header.Activated:Connect(function() group:Toggle() end))
+	group:SetCollapsed(group.Collapsed)
+	group.Instance = frame
+	return group
+end
+
+function Tab:AddCollapsibleSection(options)
+	options = type(options) == "string" and {Title = options} or (options or {})
+	local frame = BaseCard(self._page, 0)
+	frame.Name = "CollapsibleSection"
+	frame.AutomaticSize = Enum.AutomaticSize.Y
+	local layout = Instance.new("UIListLayout")
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = frame
+	local header = Instance.new("TextButton")
+	header.BackgroundTransparency = 1
+	header.AutoButtonColor = false
+	header.Size = UDim2.new(1, 0, 0, 36)
+	header.FontFace = NullUI.Theme.Font
+	header.TextSize = 14
+	header.TextTruncate = Enum.TextTruncate.AtEnd
+	header.TextXAlignment = Enum.TextXAlignment.Left
+	BindTheme(header, "TextColor3", "Text")
+	header.Parent = frame
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0, 12)
+	pad.PaddingRight = UDim.new(0, 12)
+	pad.Parent = header
+	local body = Instance.new("Frame")
+	body.BackgroundTransparency = 1
+	body.Size = UDim2.new(1, 0, 0, 0)
+	body.AutomaticSize = Enum.AutomaticSize.Y
+	body.LayoutOrder = 1
+	body.Parent = frame
+	local bodyPad = Instance.new("UIPadding")
+	bodyPad.PaddingLeft = UDim.new(0, 10)
+	bodyPad.PaddingRight = UDim.new(0, 10)
+	bodyPad.PaddingBottom = UDim.new(0, 10)
+	bodyPad.Parent = body
+	local list = Instance.new("UIListLayout")
+	list.Padding = UDim.new(0, 8)
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Parent = body
+	local parent = self
+	local section = setmetatable({Name = self.Name, Instance = frame, _page = body, _window = self._window,
+		_group = self._group, _janitor = self._janitor, _RootTab = self._RootTab or self,
+		_ParentSection = self._IsSection and self or nil, _IsSection = true}, Tab)
+	function section:SetCollapsed(value)
+		self.Collapsed = value == true
+		body.Visible = not self.Collapsed
+		for _, tab in ipairs(self.Tabs or {}) do
+			if tab._window._currentTab == tab then tab._window._tabIndicator.Visible = not self.Collapsed end
+		end
+		header.Text = (self.Collapsed and "▸  " or "▾  ") .. (options.Title or options.Text or "Section")
+	end
+	function section:Toggle() self:SetCollapsed(not self.Collapsed) end
+	function section:Expand()
+		if self._ParentSection then self._ParentSection:Expand() end
+		self:SetCollapsed(false)
+	end
+	section._select = function()
+  if parent._select then parent._select()
+  elseif parent._parentTab then parent._parentTab._select(); parent._parentTab:SelectSubTab(parent._subTabIdx) end
+  section:Expand()
+ end
+	self._janitor:Add(header.Activated:Connect(function() section:Toggle() end))
+	section:SetCollapsed(options.Collapsed == true)
+	return section
+end
+
+function Window:SetBackground(options)
+	options = type(options) == "string" and {Image = options} or (options or {})
+	if not self._BackgroundImage then
+		local image = Instance.new("ImageLabel")
+		image.Name = "WindowBackground"
+		image.BackgroundTransparency = 1
+		image.Size = UDim2.fromScale(1, 1)
+		image.ScaleType = Enum.ScaleType.Crop
+		image.ZIndex = Z.Glass
+		image.Parent = self._gui
+		Corner(image, NullUI.Theme.CornerRadius)
+		self._BackgroundImage = image
+	end
+	self._BackgroundOptions = self._BackgroundOptions or {Image = "", Transparency = 0.7}
+	for key, value in pairs(options) do self._BackgroundOptions[key] = value end
+	local image = tostring(self._BackgroundOptions.Image or "")
+	self._BackgroundImage.Image = image:match("^%d+$") and ("rbxassetid://" .. image) or image
+	self._BackgroundImage.ImageTransparency = math.clamp(tonumber(self._BackgroundOptions.Transparency) or 0.7, 0, 1)
+	self._BackgroundImage.Visible = image ~= ""
+	return self
+end
+
+function Window:AddAppearanceTab(options)
+	if self._AppearanceTab then return self._AppearanceTab end
+	options = options or {}
+	local tab = self:AddTab({Name = options.Name or "Aparência", Icon = "palette"})
+	self._AppearanceTab = tab
+	local themeSection = tab:AddCollapsibleSection({Title = "Tema e cores"})
+	local pickers = {}
+	themeSection:AddDropdown({Text = "Tema", Options = {"Dark", "Light", "Midnight", "Forest"}, Default = NullUI._ThemeName or "Dark", Callback = function(name)
+		NullUI:SetTheme(name)
+		for token, picker in pairs(pickers) do picker:Set(NullUI.Theme[token], true) end
+	end})
+	for _, entry in ipairs({{"Accent", "Destaque"}, {"Background", "Fundo"}, {"Surface", "Superfície"}, {"Text", "Texto"}, {"TextDim", "Texto secundário"}}) do
+		local token = entry[1]
+		pickers[token] = themeSection:AddColorPicker({Text = entry[2], Default = NullUI.Theme[token], Callback = function(color) NullUI:SetTheme({[token] = color}) end})
+	end
+	local imageSection = tab:AddCollapsibleSection({Title = "Imagem de fundo"})
+	imageSection:AddTextbox({Text = "Imagem", Description = "ID numérico ou rbxassetid://...", Default = "", Callback = function(value) self:SetBackground({Image = value}) end})
+	imageSection:AddSlider({Text = "Transparência", Min = 0, Max = 100, Default = 70, Callback = function(value) self:SetBackground({Transparency = value / 100}) end})
+	imageSection:AddButton({Text = "Remover imagem", Callback = function() self:SetBackground({Image = ""}) end})
+	local effects = tab:AddCollapsibleSection({Title = "Efeitos"})
+	effects:AddToggle({Text = "Blur", Default = NullUI.Config.Blur, Callback = function(enabled) NullUI:SetBlurEnabled(enabled) end})
+	return tab
+end
+
 local IntegrationContext = {
+	BindTheme = BindTheme,
 	ASSETS_FOLDER = ASSETS_FOLDER,
 	AddContentScrollThumb = AddContentScrollThumb,
 	AddScrollbar = AddScrollbar,
@@ -9901,6 +10130,7 @@ end
 function NullUI:HasModule(name) return self._Modules[name] == true end
 
 return NullUI
+
 end)()
 UI:Use((function()
 --!nonstrict
@@ -9911,6 +10141,7 @@ return {
 Name = "chat-common", API = 1,
 Requires = {},
 Install = function(context)
+ local BindTheme = context.BindTheme
 	local AddContentScrollThumb = context.AddContentScrollThumb
 	local AddScrollbar = context.AddScrollbar
 	local Corner = context.Corner
@@ -9950,7 +10181,7 @@ local function CreateChatComposer(content, INPUT_H, BASE_Z, jan, placeholder)
 	inputBox.PlaceholderText = placeholder
 	inputBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 122)
 	inputBox.Text = ""
-	inputBox.TextColor3 = NullUI.Theme.Text
+	BindTheme(inputBox, "TextColor3", "Text")
 	inputBox.TextSize = 13
 	inputBox.TextXAlignment = Enum.TextXAlignment.Left
 	inputBox.TextYAlignment = Enum.TextYAlignment.Center
@@ -9983,7 +10214,7 @@ local function CreateChatComposer(content, INPUT_H, BASE_Z, jan, placeholder)
 	local sendIcon = Instance.new("ImageLabel")
 	sendIcon.BackgroundTransparency = 1
 	sendIcon.Image = ResolveIcon("send")
-	sendIcon.ImageColor3 = NullUI.Theme.Text
+	BindTheme(sendIcon, "ImageColor3", "Text")
 	sendIcon.Size = UDim2.fromOffset(14, 14)
 	sendIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 	sendIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -10068,7 +10299,7 @@ local function ChatHeaderButton(controls, BASE_Z, jan, icon, layoutOrder)
 		local ic = Instance.new("ImageLabel")
 		ic.BackgroundTransparency = 1
 		ic.Image = ResolveIcon(icon)
-		ic.ImageColor3 = NullUI.Theme.TextDim
+		BindTheme(ic, "ImageColor3", "TextDim")
 		ic.Size = UDim2.fromOffset(13, 13)
 		ic.AnchorPoint = Vector2.new(0.5, 0.5)
 		ic.Position = UDim2.fromScale(0.5, 0.5)
@@ -10098,6 +10329,7 @@ return {
 Name = "spotify", API = 1,
 Requires = {},
 Install = function(context)
+ local BindTheme = context.BindTheme
 	local ASSETS_FOLDER = context.ASSETS_FOLDER
 	local Corner = context.Corner
 	local EnsureAssetsFolder = context.EnsureAssetsFolder
@@ -10186,7 +10418,7 @@ function Window:AddSpotifyPanel(opts)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = opts.Title or "Spotify Player"
-	titleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.AnchorPoint = Vector2.new(0, 0.5)
@@ -10208,7 +10440,7 @@ function Window:AddSpotifyPanel(opts)
 	local closeIcon = Instance.new("ImageLabel")
 	closeIcon.BackgroundTransparency = 1
 	closeIcon.Image = ResolveIcon("x")
-	closeIcon.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(closeIcon, "ImageColor3", "TextDim")
 	closeIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 	closeIcon.Position = UDim2.fromScale(0.5, 0.5)
 	closeIcon.Size = UDim2.fromOffset(13, 13)
@@ -10298,7 +10530,7 @@ function Window:AddSpotifyPanel(opts)
 	statusLabel.BackgroundTransparency = 1
 	statusLabel.FontFace = NullUI.Theme.FontRegular
 	statusLabel.Text = "Bridge disconnected"
-	statusLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(statusLabel, "TextColor3", "TextDim")
 	statusLabel.TextSize = 12
 	statusLabel.TextXAlignment = Enum.TextXAlignment.Left
 	statusLabel.Position = UDim2.fromOffset(27, 0)
@@ -10389,7 +10621,7 @@ function Window:AddSpotifyPanel(opts)
 	trackLabel.BackgroundTransparency = 1
 	trackLabel.FontFace = NullUI.Theme.Font
 	trackLabel.Text = "Nothing playing"
-	trackLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(trackLabel, "TextColor3", "Text")
 	trackLabel.TextSize = 15
 	trackLabel.TextXAlignment = Enum.TextXAlignment.Left
 	trackLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -10402,7 +10634,7 @@ function Window:AddSpotifyPanel(opts)
 	artistLabel.BackgroundTransparency = 1
 	artistLabel.FontFace = NullUI.Theme.FontRegular
 	artistLabel.Text = "Connect your Spotify bridge"
-	artistLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(artistLabel, "TextColor3", "TextDim")
 	artistLabel.TextSize = 12
 	artistLabel.TextXAlignment = Enum.TextXAlignment.Left
 	artistLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -10455,7 +10687,7 @@ function Window:AddSpotifyPanel(opts)
 	seekBubbleLabel.BackgroundTransparency = 1
 	seekBubbleLabel.FontFace = NullUI.Theme.Font
 	seekBubbleLabel.Text = "0:00"
-	seekBubbleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(seekBubbleLabel, "TextColor3", "Text")
 	seekBubbleLabel.TextSize = 10
 	seekBubbleLabel.Size = UDim2.fromScale(1, 1)
 	seekBubbleLabel.ZIndex = Z.Content + 9
@@ -10475,7 +10707,7 @@ function Window:AddSpotifyPanel(opts)
 	timeLabel.BackgroundTransparency = 1
 	timeLabel.FontFace = NullUI.Theme.FontRegular
 	timeLabel.Text = "0:00"
-	timeLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(timeLabel, "TextColor3", "TextDim")
 	timeLabel.TextSize = 10
 	timeLabel.TextXAlignment = Enum.TextXAlignment.Left
 	timeLabel.Position = UDim2.fromOffset(100, 87)
@@ -10487,7 +10719,7 @@ function Window:AddSpotifyPanel(opts)
 	durationLabel.BackgroundTransparency = 1
 	durationLabel.FontFace = NullUI.Theme.FontRegular
 	durationLabel.Text = "0:00"
-	durationLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(durationLabel, "TextColor3", "TextDim")
 	durationLabel.TextSize = 10
 	durationLabel.TextXAlignment = Enum.TextXAlignment.Right
 	durationLabel.Position = UDim2.new(0.5, 50, 0, 87)
@@ -10559,7 +10791,7 @@ function Window:AddSpotifyPanel(opts)
 		label.BackgroundTransparency = 1
 		label.FontFace = NullUI.Theme.Font
 		label.Text = title
-		label.TextColor3 = NullUI.Theme.Text
+		BindTheme(label, "TextColor3", "Text")
 		label.TextSize = 12
 		label.TextXAlignment = Enum.TextXAlignment.Left
 		label.Position = UDim2.fromOffset(11, 6)
@@ -10593,7 +10825,7 @@ function Window:AddSpotifyPanel(opts)
 		local buttonImage = Instance.new("ImageLabel")
 		buttonImage.BackgroundTransparency = 1
 		buttonImage.Image = ResolveIcon(buttonIcon)
-		buttonImage.ImageColor3 = NullUI.Theme.Text
+		BindTheme(buttonImage, "ImageColor3", "Text")
 		buttonImage.AnchorPoint = Vector2.new(0.5, 0.5)
 		buttonImage.Position = UDim2.fromScale(0.5, 0.5)
 		buttonImage.Size = UDim2.fromOffset(14, 14)
@@ -10606,7 +10838,7 @@ function Window:AddSpotifyPanel(opts)
 		box.PlaceholderText = placeholder
 		box.PlaceholderColor3 = Color3.fromRGB(115, 120, 118)
 		box.Text = ""
-		box.TextColor3 = NullUI.Theme.Text
+		BindTheme(box, "TextColor3", "Text")
 		box.TextSize = 11
 		box.TextXAlignment = Enum.TextXAlignment.Left
 		box.BackgroundTransparency = 1
@@ -10683,7 +10915,7 @@ function Window:AddSpotifyPanel(opts)
 	favoritesTitle.BackgroundTransparency = 1
 	favoritesTitle.FontFace = NullUI.Theme.Font
 	favoritesTitle.Text = "Favorite playlists"
-	favoritesTitle.TextColor3 = NullUI.Theme.Text
+	BindTheme(favoritesTitle, "TextColor3", "Text")
 	favoritesTitle.TextSize = 14
 	favoritesTitle.TextXAlignment = Enum.TextXAlignment.Left
 	favoritesTitle.Position = UDim2.fromOffset(12, 8)
@@ -10695,7 +10927,7 @@ function Window:AddSpotifyPanel(opts)
 	favoritesHint.BackgroundTransparency = 1
 	favoritesHint.FontFace = NullUI.Theme.FontRegular
 	favoritesHint.Text = "Save and load your playlists with one tap"
-	favoritesHint.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(favoritesHint, "TextColor3", "TextDim")
 	favoritesHint.TextSize = 10
 	favoritesHint.TextXAlignment = Enum.TextXAlignment.Left
 	favoritesHint.Position = UDim2.fromOffset(12, 29)
@@ -10715,7 +10947,7 @@ function Window:AddSpotifyPanel(opts)
 	local favoritesSearchIcon = Instance.new("ImageLabel")
 	favoritesSearchIcon.BackgroundTransparency = 1
 	favoritesSearchIcon.Image = ResolveIcon("search")
-	favoritesSearchIcon.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(favoritesSearchIcon, "ImageColor3", "TextDim")
 	favoritesSearchIcon.AnchorPoint = Vector2.new(0, 0.5)
 	favoritesSearchIcon.Position = UDim2.new(0, 11, 0.5, 0)
 	favoritesSearchIcon.Size = UDim2.fromOffset(15, 15)
@@ -10728,7 +10960,7 @@ function Window:AddSpotifyPanel(opts)
 	favoritesSearchBox.PlaceholderText = "Search favorite playlists..."
 	favoritesSearchBox.PlaceholderColor3 = Color3.fromRGB(115, 120, 118)
 	favoritesSearchBox.Text = ""
-	favoritesSearchBox.TextColor3 = NullUI.Theme.Text
+	BindTheme(favoritesSearchBox, "TextColor3", "Text")
 	favoritesSearchBox.TextSize = 11
 	favoritesSearchBox.TextXAlignment = Enum.TextXAlignment.Left
 	favoritesSearchBox.Position = UDim2.fromOffset(36, 0)
@@ -10750,7 +10982,7 @@ function Window:AddSpotifyPanel(opts)
 	local addFavoriteIcon = Instance.new("ImageLabel")
 	addFavoriteIcon.BackgroundTransparency = 1
 	addFavoriteIcon.Image = ResolveIcon("heart-plus")
-	addFavoriteIcon.ImageColor3 = NullUI.Theme.Text
+	BindTheme(addFavoriteIcon, "ImageColor3", "Text")
 	addFavoriteIcon.AnchorPoint = Vector2.new(0, 0.5)
 	addFavoriteIcon.Position = UDim2.new(0, 16, 0.5, 0)
 	addFavoriteIcon.Size = UDim2.fromOffset(17, 17)
@@ -10760,7 +10992,7 @@ function Window:AddSpotifyPanel(opts)
 	saveFavoriteTitle.BackgroundTransparency = 1
 	saveFavoriteTitle.FontFace = NullUI.Theme.Font
 	saveFavoriteTitle.Text = "Save current playlist"
-	saveFavoriteTitle.TextColor3 = NullUI.Theme.Text
+	BindTheme(saveFavoriteTitle, "TextColor3", "Text")
 	saveFavoriteTitle.TextSize = 12
 	saveFavoriteTitle.TextXAlignment = Enum.TextXAlignment.Left
 	saveFavoriteTitle.Position = UDim2.fromOffset(44, 7)
@@ -10771,7 +11003,7 @@ function Window:AddSpotifyPanel(opts)
 	saveFavoriteHint.BackgroundTransparency = 1
 	saveFavoriteHint.FontFace = NullUI.Theme.FontRegular
 	saveFavoriteHint.Text = "Add the playlist loaded in the player to Favorites"
-	saveFavoriteHint.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(saveFavoriteHint, "TextColor3", "TextDim")
 	saveFavoriteHint.TextSize = 9
 	saveFavoriteHint.TextXAlignment = Enum.TextXAlignment.Left
 	saveFavoriteHint.Position = UDim2.fromOffset(44, 27)
@@ -10781,7 +11013,7 @@ function Window:AddSpotifyPanel(opts)
 	local saveFavoriteChevron = Instance.new("ImageLabel")
 	saveFavoriteChevron.BackgroundTransparency = 1
 	saveFavoriteChevron.Image = ResolveIcon("chevron-right")
-	saveFavoriteChevron.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(saveFavoriteChevron, "ImageColor3", "TextDim")
 	saveFavoriteChevron.AnchorPoint = Vector2.new(1, 0.5)
 	saveFavoriteChevron.Position = UDim2.new(1, -16, 0.5, 0)
 	saveFavoriteChevron.Size = UDim2.fromOffset(14, 14)
@@ -10915,7 +11147,7 @@ function Window:AddSpotifyPanel(opts)
 			empty.BackgroundTransparency = 1
 			empty.FontFace = NullUI.Theme.FontRegular
 			empty.Text = query ~= "" and "No saved playlist matches your search" or "No saved playlists yet"
-			empty.TextColor3 = NullUI.Theme.TextDim
+			BindTheme(empty, "TextColor3", "TextDim")
 			empty.TextSize = 11
 			empty.Size = UDim2.fromScale(1, 1)
 			empty.ZIndex = Z.Content + 3
@@ -10948,7 +11180,7 @@ function Window:AddSpotifyPanel(opts)
 			local playlistIcon = Instance.new("ImageLabel")
 			playlistIcon.BackgroundTransparency = 1
 			playlistIcon.Image = ResolveIcon("list-music")
-			playlistIcon.ImageColor3 = NullUI.Theme.Text
+			BindTheme(playlistIcon, "ImageColor3", "Text")
 			playlistIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 			playlistIcon.Position = UDim2.fromScale(0.5, 0.5)
 			playlistIcon.Size = UDim2.fromOffset(15, 15)
@@ -10958,7 +11190,7 @@ function Window:AddSpotifyPanel(opts)
 			name.BackgroundTransparency = 1
 			name.FontFace = NullUI.Theme.Font
 			name.Text = tostring(favorite.name or "Spotify playlist")
-			name.TextColor3 = NullUI.Theme.Text
+			BindTheme(name, "TextColor3", "Text")
 			name.TextSize = 11
 			name.TextXAlignment = Enum.TextXAlignment.Left
 			name.TextTruncate = Enum.TextTruncate.AtEnd
@@ -10970,7 +11202,7 @@ function Window:AddSpotifyPanel(opts)
 			subtitle.BackgroundTransparency = 1
 			subtitle.FontFace = NullUI.Theme.FontRegular
 			subtitle.Text = "Spotify playlist"
-			subtitle.TextColor3 = NullUI.Theme.TextDim
+			BindTheme(subtitle, "TextColor3", "TextDim")
 			subtitle.TextSize = 9
 			subtitle.TextXAlignment = Enum.TextXAlignment.Left
 			subtitle.Position = UDim2.fromOffset(60, 30)
@@ -10991,7 +11223,7 @@ function Window:AddSpotifyPanel(opts)
 			local loadFavoriteIcon = Instance.new("ImageLabel")
 			loadFavoriteIcon.BackgroundTransparency = 1
 			loadFavoriteIcon.Image = ResolveIcon("play")
-			loadFavoriteIcon.ImageColor3 = NullUI.Theme.Text
+			BindTheme(loadFavoriteIcon, "ImageColor3", "Text")
 			loadFavoriteIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 			loadFavoriteIcon.Position = UDim2.fromScale(0.5, 0.5)
 			loadFavoriteIcon.Size = UDim2.fromOffset(13, 13)
@@ -11294,6 +11526,7 @@ return {
 Name = "assistant", API = 1,
 Requires = {"chat-common"},
 Install = function(context)
+ local BindTheme = context.BindTheme
 	local ASSETS_FOLDER = context.ASSETS_FOLDER
 	local Corner = context.Corner
 	local EnsureAssetsFolder = context.EnsureAssetsFolder
@@ -11604,7 +11837,7 @@ function Window:AddChatPanel(opts)
 	local titleIcon = Instance.new("ImageLabel")
 	titleIcon.BackgroundTransparency = 1
 	titleIcon.Image = ResolveIcon(opts.Icon or "bot")
-	titleIcon.ImageColor3 = NullUI.Theme.Text
+	BindTheme(titleIcon, "ImageColor3", "Text")
 	titleIcon.Size = UDim2.fromOffset(14, 14)
 	titleIcon.LayoutOrder = 1
 	titleIcon.ZIndex = BASE_Z + 2
@@ -11614,7 +11847,7 @@ function Window:AddChatPanel(opts)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = opts.Title or "Assistant"
-	titleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.AutomaticSize = Enum.AutomaticSize.X
@@ -11739,7 +11972,7 @@ function Window:AddChatPanel(opts)
 			botIcon.BackgroundTransparency = 1
 			botIcon.ImageTransparency = 1
 			botIcon.Image = ResolveIcon("bot")
-			botIcon.ImageColor3 = NullUI.Theme.Accent
+			BindTheme(botIcon, "ImageColor3", "Accent")
 			botIcon.Size = UDim2.fromOffset(14, 14)
 			botIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 			botIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -11808,7 +12041,7 @@ function Window:AddChatPanel(opts)
 			if seg.kind == "code" then
 				local card = Instance.new("Frame")
 				card.Name = "CodeBlock"
-				card.BackgroundColor3 = NullUI.Theme.Background
+				BindTheme(card, "BackgroundColor3", "Background")
 				card.BackgroundTransparency = 0.1
 				card.BorderSizePixel = 0
 				card.ClipsDescendants = true
@@ -11836,7 +12069,7 @@ function Window:AddChatPanel(opts)
 				langLabel.BackgroundTransparency = 1
 				langLabel.FontFace = NullUI.Theme.FontRegular
 				langLabel.Text = seg.lang
-				langLabel.TextColor3 = NullUI.Theme.TextDim
+				BindTheme(langLabel, "TextColor3", "TextDim")
 				langLabel.TextSize = 11
 				langLabel.TextXAlignment = Enum.TextXAlignment.Left
 				langLabel.Position = UDim2.fromOffset(10, 0)
@@ -11861,7 +12094,7 @@ function Window:AddChatPanel(opts)
 					local ic = Instance.new("ImageLabel")
 					ic.BackgroundTransparency = 1
 					ic.Image = ResolveIcon(icon)
-					ic.ImageColor3 = NullUI.Theme.TextDim
+					BindTheme(ic, "ImageColor3", "TextDim")
 					ic.Size = UDim2.fromOffset(12, 12)
 					ic.AnchorPoint = Vector2.new(0.5, 0.5)
 					ic.Position = UDim2.fromScale(0.5, 0.5)
@@ -11946,7 +12179,7 @@ function Window:AddChatPanel(opts)
 				codeLabel.FontFace = Font.new(CHAT_CODE_FONT, Enum.FontWeight.Regular, Enum.FontStyle.Normal)
 				codeLabel.RichText = true
 				codeLabel.Text = HighlightLua(EscapeRichText(seg.content))
-				codeLabel.TextColor3 = NullUI.Theme.Text
+				BindTheme(codeLabel, "TextColor3", "Text")
 				codeLabel.TextSize = 12
 				codeLabel.TextWrapped = true
 				codeLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -11963,7 +12196,7 @@ function Window:AddChatPanel(opts)
 				label.FontFace = NullUI.Theme.FontRegular
 				label.RichText = true
 				label.Text = MarkdownToRichText(seg.content)
-				label.TextColor3 = NullUI.Theme.Text
+				BindTheme(label, "TextColor3", "Text")
 				label.TextTransparency = 1
 				label.TextSize = 13
 				label.TextWrapped = true
@@ -12023,7 +12256,7 @@ function Window:AddChatPanel(opts)
 		local toolIcon = Instance.new("ImageLabel")
 		toolIcon.BackgroundTransparency = 1
 		toolIcon.Image = ResolveIcon("wrench")
-		toolIcon.ImageColor3 = NullUI.Theme.Accent
+		BindTheme(toolIcon, "ImageColor3", "Accent")
 		toolIcon.Size = UDim2.fromOffset(11, 11)
 		toolIcon.LayoutOrder = 1
 		toolIcon.ZIndex = BASE_Z + 2
@@ -12033,7 +12266,7 @@ function Window:AddChatPanel(opts)
 		label.BackgroundTransparency = 1
 		label.FontFace = NullUI.Theme.FontRegular
 		label.Text = "Called tool: " .. tostring(name)
-		label.TextColor3 = NullUI.Theme.TextDim
+		BindTheme(label, "TextColor3", "TextDim")
 		label.TextSize = 11
 		label.AutomaticSize = Enum.AutomaticSize.XY
 		label.Size = UDim2.fromOffset(0, 14)
@@ -12075,7 +12308,7 @@ function Window:AddChatPanel(opts)
 		rowLayout.Parent = row
 
 		local avatar = Instance.new("Frame")
-		avatar.BackgroundColor3 = NullUI.Theme.Accent
+		BindTheme(avatar, "BackgroundColor3", "Accent")
 		avatar.BackgroundTransparency = 1
 		avatar.BorderSizePixel = 0
 		avatar.Size = UDim2.fromOffset(AVATAR, AVATAR)
@@ -12088,7 +12321,7 @@ function Window:AddChatPanel(opts)
 		botIcon.BackgroundTransparency = 1
 		botIcon.ImageTransparency = 1
 		botIcon.Image = ResolveIcon("bot")
-		botIcon.ImageColor3 = NullUI.Theme.Accent
+		BindTheme(botIcon, "ImageColor3", "Accent")
 		botIcon.Size = UDim2.fromOffset(14, 14)
 		botIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 		botIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -12110,7 +12343,7 @@ function Window:AddChatPanel(opts)
 		for i = 1, 3 do
 			local baseX = 10 + (i - 1) * 9
 			local dot = Instance.new("Frame")
-			dot.BackgroundColor3 = NullUI.Theme.TextDim
+			BindTheme(dot, "BackgroundColor3", "TextDim")
 			dot.BackgroundTransparency = 1
 			dot.BorderSizePixel = 0
 			dot.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -12545,6 +12778,7 @@ return {
 Name = "cloud", API = 1,
 Requires = {"chat-common"},
 Install = function(context)
+ local BindTheme = context.BindTheme
 	local Corner = context.Corner
 	local EnsureAssetsFolder = context.EnsureAssetsFolder
 	local HttpService = context.HttpService
@@ -13089,7 +13323,7 @@ function Window:AddGlobalChatPanel(opts)
 	local titleIcon = Instance.new("ImageLabel")
 	titleIcon.BackgroundTransparency = 1
 	titleIcon.Image = ResolveIcon(opts.Icon or "messages-square")
-	titleIcon.ImageColor3 = NullUI.Theme.Text
+	BindTheme(titleIcon, "ImageColor3", "Text")
 	titleIcon.Size = UDim2.fromOffset(14, 14)
 	titleIcon.LayoutOrder = 1
 	titleIcon.ZIndex = BASE_Z + 2
@@ -13099,7 +13333,7 @@ function Window:AddGlobalChatPanel(opts)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = opts.Title or "Chat"
-	titleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.AutomaticSize = Enum.AutomaticSize.X
@@ -13279,7 +13513,7 @@ function Window:AddGlobalChatPanel(opts)
 		label.BackgroundTransparency = 1
 		label.FontFace = NullUI.Theme.FontRegular
 		label.Text = text
-		label.TextColor3 = NullUI.Theme.Text
+		BindTheme(label, "TextColor3", "Text")
 		label.TextTransparency = 1
 		label.TextSize = 13
 		label.TextWrapped = true
@@ -13328,7 +13562,7 @@ function Window:AddGlobalChatPanel(opts)
 			reportIcon.BackgroundTransparency = 1
 			reportIcon.ImageTransparency = 1
 			reportIcon.Image = ResolveIcon("flag")
-			reportIcon.ImageColor3 = NullUI.Theme.TextDim
+			BindTheme(reportIcon, "ImageColor3", "TextDim")
 			reportIcon.Size = UDim2.fromOffset(11, 11)
 			reportIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 			reportIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -13459,7 +13693,7 @@ function Window:AddGlobalChatPanel(opts)
 
 		local popup = Instance.new("Frame")
 		popup.Name = "ChatSettingsPopup"
-		popup.BackgroundColor3 = NullUI.Theme.Surface
+		BindTheme(popup, "BackgroundColor3", "Surface")
 		popup.BackgroundTransparency = 0.05
 		popup.BorderSizePixel = 0
 		popup.AnchorPoint = Vector2.new(1, 0)
@@ -13496,7 +13730,7 @@ function Window:AddGlobalChatPanel(opts)
 			lbl.BackgroundTransparency = 1
 			lbl.FontFace = NullUI.Theme.FontRegular
 			lbl.Text = label
-			lbl.TextColor3 = NullUI.Theme.Text
+			BindTheme(lbl, "TextColor3", "Text")
 			lbl.TextSize = 12
 			lbl.TextXAlignment = Enum.TextXAlignment.Left
 			lbl.Size = UDim2.new(1, -30, 1, 0)
@@ -13519,7 +13753,7 @@ function Window:AddGlobalChatPanel(opts)
 			local checkIcon = Instance.new("ImageLabel")
 			checkIcon.BackgroundTransparency = 1
 			checkIcon.Image = ResolveIcon("check")
-			checkIcon.ImageColor3 = NullUI.Theme.Accent
+			BindTheme(checkIcon, "ImageColor3", "Accent")
 			checkIcon.ImageTransparency = getValue() and 0 or 1
 			checkIcon.Size = UDim2.fromOffset(11, 11)
 			checkIcon.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -13853,6 +14087,7 @@ return {
 Name = "feedback", API = 1,
 Requires = {},
 Install = function(context)
+ local BindTheme = context.BindTheme
 	local DetectFeedbackEvasion = context.DetectFeedbackEvasion
 	local HttpService = context.HttpService
 	local NormalizeFeedbackText = context.NormalizeFeedbackText
@@ -13958,5 +14193,6 @@ end,
 }
 end)()
 }}
+
 end)())
 return UI
