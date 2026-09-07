@@ -4372,7 +4372,7 @@ function Tab:AddSubTab(nameOrOpts)
 
 		self._subTabScrollTrack = Instance.new("Frame")
 		self._subTabScrollTrack.Name = "SubTabScrollTrack"
-		self.BindTheme(_subTabScrollTrack, "BackgroundColor3", "TextDim")
+		BindTheme(self._subTabScrollTrack, "BackgroundColor3", "TextDim")
 		self._subTabScrollTrack.BackgroundTransparency = 0.85
 		self._subTabScrollTrack.BorderSizePixel = 0
 		self._subTabScrollTrack.Position = UDim2.new(0, 2, 0, 48)
@@ -4384,7 +4384,7 @@ function Tab:AddSubTab(nameOrOpts)
 
 		self._subTabScrollThumb = Instance.new("Frame")
 		self._subTabScrollThumb.Name = "Thumb"
-		self.BindTheme(_subTabScrollThumb, "BackgroundColor3", "TextDim")
+		BindTheme(self._subTabScrollThumb, "BackgroundColor3", "TextDim")
 		self._subTabScrollThumb.BackgroundTransparency = 0.35
 		self._subTabScrollThumb.BorderSizePixel = 0
 		self._subTabScrollThumb.Size = UDim2.new(0, 40, 1, 0)
