@@ -2838,7 +2838,7 @@ function Window:Open()
 	local targetSize = self._sizeBeforeMinimize or self._normalSize
 	Tween(gui, {
 		Size = targetSize,
-		BackgroundTransparency = 0.15,
+		BackgroundTransparency = self._BackgroundTransparency or 0.15,
 	}, 0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 
 	task.delay(0.33, function()
@@ -9913,7 +9913,7 @@ do
 	end
 end
 
-local function CollapsibleHeading(header, title, inset, token, rightAligned)
+local function CollapsibleHeading(header, title, inset, token, rightAligned, leadingIcon)
  header.Text = ""
  local icon = Instance.new("ImageLabel")
  icon.Name = "CollapseChevron"
@@ -9936,6 +9936,19 @@ local function CollapsibleHeading(header, title, inset, token, rightAligned)
  label.Text = title
  BindTheme(label, "TextColor3", token)
  label.Parent = header
+ if leadingIcon and rightAligned then
+  local symbol = Instance.new("ImageLabel")
+  symbol.Name = "SectionIcon"
+  symbol.BackgroundTransparency = 1
+  symbol.Size = UDim2.fromOffset(16, 16)
+  symbol.AnchorPoint = Vector2.new(0, 0.5)
+  symbol.Position = UDim2.new(0, inset, 0.5, 0)
+  symbol.Image = ResolveIcon(leadingIcon)
+  BindTheme(symbol, "ImageColor3", token)
+  symbol.Parent = header
+  label.Position = UDim2.fromOffset(inset + 24, 0)
+  label.Size = UDim2.new(1, -(inset + 56), 1, 0)
+ end
  return icon
 end
 
@@ -10091,7 +10104,7 @@ function Tab:AddCollapsibleSection(options)
 	local section = setmetatable({Name = self.Name, Instance = frame, _page = body, _window = self._window,
 		_group = self._group, _janitor = self._janitor, _RootTab = self._RootTab or self,
 		_ParentSection = self._IsSection and self or nil, _IsSection = true}, Tab)
-	local chevron = CollapsibleHeading(header, options.Title or options.Text or "Section", 12, "Text", true)
+	local chevron = CollapsibleHeading(header, options.Title or options.Text or "Section", 12, "Text", true, options.Icon)
 	local animate = AnimateCollapsibleBody(body, chevron, self._janitor)
 	function section:SetCollapsed(value)
 		self.Collapsed = value == true
@@ -10161,6 +10174,14 @@ function Tab:AddTabBox(options)
  row.Padding = UDim.new(0, 4)
  row.Parent = bar
  local box = {Instance = frame, Tabs = {}}
+ local transition, completion
+ local generation = 0
+ local function cancelTransition()
+  generation = generation + 1
+  if completion then completion:Disconnect(); completion = nil end
+  if transition then transition:Cancel(); transition = nil end
+ end
+ parent._janitor:Add(cancelTransition)
  local function resizeButtons()
   local count = #box.Tabs
   if count == 0 then return end
@@ -10175,9 +10196,30 @@ function Tab:AddTabBox(options)
    if value == index or value == tab.Name or value == tab then selected = tab; break end
   end
   if not selected then return end
+  if self.Selected == selected then return end
+  local previous = self.Selected
+  cancelTransition()
+  local token = generation
   self.Selected = selected
+  local function reveal()
+   if token ~= generation or not frame.Parent then return end
+   for _, item in ipairs(self.Tabs) do item._page.Visible = item == selected end
+   selected._page.GroupTransparency = previous and 1 or 0
+   if previous then
+    transition = Tween(selected._page, {GroupTransparency = 0}, 0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+   end
+  end
+  if previous and previous._page.Visible then
+   transition = TweenService:Create(previous._page, TweenInfo.new(0.09, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {GroupTransparency = 1})
+   completion = transition.Completed:Connect(function()
+    if completion then completion:Disconnect(); completion = nil end
+    reveal()
+   end)
+   transition:Play()
+  else
+   reveal()
+  end
   for _, tab in ipairs(self.Tabs) do
-   tab._page.Visible = tab == selected
    BindTheme(tab._button, "TextColor3", tab == selected and "Text" or "TextDim")
    if tab._label then BindTheme(tab._label, "TextColor3", tab == selected and "Text" or "TextDim") end
    if tab._icon then BindTheme(tab._icon, "ImageColor3", tab == selected and "Text" or "TextDim") end
@@ -10229,7 +10271,8 @@ function Tab:AddTabBox(options)
    label.Text = opts.Name or "Tab"
    label.Parent = button
   end
-  local body = Instance.new("Frame")
+  local body = Instance.new("CanvasGroup")
+  body.GroupTransparency = 0
   body.BackgroundTransparency = 1
   body.Size = UDim2.new(1, 0, 0, 0)
   body.AutomaticSize = Enum.AutomaticSize.Y
@@ -10256,7 +10299,12 @@ function Tab:AddTabBox(options)
   table.insert(self.Tabs, tab)
   resizeButtons()
   parent._janitor:Add(button.Activated:Connect(function() box:SelectTab(tab) end))
-  box:SelectTab(self.Selected or tab)
+  if not self.Selected then box:SelectTab(tab)
+  else
+   BindTheme(button, "TextColor3", "TextDim")
+   if label then BindTheme(label, "TextColor3", "TextDim") end
+   if icon then BindTheme(icon, "ImageColor3", "TextDim") end
+  end
   return tab
  end
  return box
@@ -10264,7 +10312,7 @@ end
 
 function Tab:AddToggleSection(options)
  options = options or {}
- local section = self:AddCollapsibleSection({Title = options.Title or "Settings", Collapsed = options.Collapsed})
+ local section = self:AddCollapsibleSection({Title = options.Title or "Settings", Icon = options.Icon, Collapsed = options.Collapsed})
  local toggle = section:AddToggle({Text = options.Text or "Enable", Default = options.Default == true, Flag = options.Flag, Callback = options.Callback})
  local body = Instance.new("Frame")
  body.Name = "DependentControls"
@@ -10317,6 +10365,12 @@ function Window:SetBackground(options)
 	return self
 end
 
+function Window:SetBackgroundTransparency(value)
+ self._BackgroundTransparency = math.clamp(tonumber(value) or 0.15, 0, 1)
+ self._gui.BackgroundTransparency = self._BackgroundTransparency
+ return self
+end
+
 function Window:AddAppearanceTab(options)
 	if self._AppearanceTab then return self._AppearanceTab end
 	options = options or {}
@@ -10332,7 +10386,10 @@ function Window:AddAppearanceTab(options)
 		local token = entry[1]
 		pickers[token] = themeSection:AddColorPicker({Text = entry[2], Default = NullUI.Theme[token], Callback = function(color) NullUI:SetTheme({[token] = color}) end})
 	end
-	local imageSection = tab:AddCollapsibleSection({Title = "Background image"})
+	local opacitySection = tab:AddCollapsibleSection({Title = "Window background", Icon = "Lucide:blend"})
+ opacitySection:AddSlider({Text = "Background transparency", Description = "0 = opaque, 100 = transparent", Min = 0, Max = 100, Default = (self._BackgroundTransparency or 0.15) * 100,
+  Callback = function(value) self:SetBackgroundTransparency(value / 100) end})
+ local imageSection = tab:AddCollapsibleSection({Title = "Background image"})
 	imageSection:AddTextbox({Text = "Image", Description = "Numeric ID or rbxassetid://...", Default = "", Callback = function(value) self:SetBackground({Image = value}) end})
 	imageSection:AddSlider({Text = "Transparency", Min = 0, Max = 100, Default = 70, Callback = function(value) self:SetBackground({Transparency = value / 100}) end})
 	imageSection:AddButton({Text = "Remove image", Callback = function() self:SetBackground({Image = ""}) end})
