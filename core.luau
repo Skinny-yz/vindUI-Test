@@ -3447,8 +3447,8 @@ function Window:AddTab(nameOrOpts)
 		if hidden then
 			Tween(self._tabIndicator, { BackgroundTransparency = 1 }, 0.15)
 		else
-			self._tabIndicator.Position = UDim2.new(0, 0, 0, indicatorY())
 			Tween(self._tabIndicator, {
+				Position = UDim2.new(0, 0, 0, indicatorY()),
 				BackgroundTransparency = 0.88,
 			}, 0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 		end
