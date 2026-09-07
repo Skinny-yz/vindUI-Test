@@ -25,7 +25,7 @@ getgenv().CONFIG = {
 }
 
 local VindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Skinny-yz/vindUI-Test/main/full.luau"))()
-VindUI:PreloadIcons({ "Lucide" })
+VindUI:PreloadIcons({ "Lucide", "Material", "Phosphor", "SF" })
 VindUI:SetScaleRange(0.75, 1.35) -- Desktop
 VindUI:SetMobileScaleReference(getgenv().CONFIG.MobileScaleReference)
 
@@ -233,13 +233,10 @@ Tabs.About:AddButton({Text = "Copy repository link", Icon = "Lucide:github", Cal
     if setclipboard then setclipboard(getgenv().CONFIG.CommunityUrl) else notify("Repository", getgenv().CONFIG.CommunityUrl) end
 end})
 
--- Build the extended showcase only when requested.
-local CatalogLoaded = false
-local function LoadFullCatalog()
-if CatalogLoaded then Window:SelectTab("Insights"); return end
-CatalogLoaded = true
+-- Extended component and API catalog
+do
 local Tabs = {}
-local Catalog = Window:AddTabGroup({Name = "FULL CATALOG", Collapsed = false})
+local Catalog = Window:AddTabGroup({Name = "FULL CATALOG", Collapsed = true})
 Tabs.Home = Catalog:AddTab({ Name = "Insights", Icon = "Lucide:layout-dashboard" })
 
 local Details = Tabs.Home:AddSubTab({ Name = "Details And Info", Icon = "Lucide:layout-grid" })
@@ -1184,10 +1181,6 @@ Tabs.Empty = Catalog:AddTab({ Name = "Empty", Icon = "Material:grid_on" })
 
 
 end
-Quick:AddButton({Text = "Open full component catalog", Icon = "Lucide:library", Callback = function()
-    LoadFullCatalog()
-    Window:SelectTab("Insights")
-end})
 local Panels = section(Tabs.Settings, "Extra panels", "panel-right", true)
 local PreviewPanel
 Panels:AddButton({Text = "Open custom panel", Callback = function()

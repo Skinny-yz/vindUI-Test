@@ -261,7 +261,8 @@ local function CreateWindowAcrylic(guiObject)
 		local size = gui.AbsoluteSize
 		local visible = NullUI.Config.Blur ~= false
 			and gui.Visible and size.X > 2 and size.Y > 2
-		self.Part.Transparency = visible and ACRYLIC_TRANSPARENCY or 1
+		local transparency = visible and ACRYLIC_TRANSPARENCY or 1
+  if self.Part.Transparency ~= transparency then self.Part.Transparency = transparency end
 		if not visible then self._lastGeometry = nil; return end
   local renderPose = camera:GetRenderCFrame()
   local last = self._lastGeometry
@@ -278,7 +279,13 @@ local function CreateWindowAcrylic(guiObject)
 			math.max(1, size.Y - edgeInset * 2)
 		)
 
-		local function ScreenToWorld(point)
+		if self._projection and self._projection.Size == size and self._projection.Position == gui.AbsolutePosition
+   and self._projection.Viewport == camera.ViewportSize and self._projection.Fov == camera.FieldOfView
+   and self._projection.Camera == camera then
+   self.Part.CFrame = renderPose * self._projection.LocalFrame
+   return
+  end
+  local function ScreenToWorld(point)
 			local ray = camera:ScreenPointToRay(point.X, point.Y)
 			return ray.Origin + ray.Direction * ACRYLIC_DISTANCE
 		end
@@ -297,6 +304,9 @@ local function CreateWindowAcrylic(guiObject)
 			renderCFrame.ZVector
 		)
 		self.Mesh.Scale = Vector3.new(width, height, 0.001)
+  self._projection = {Camera = camera, Size = size, Position = gui.AbsolutePosition,
+   Viewport = camera.ViewportSize, Fov = camera.FieldOfView,
+   LocalFrame = renderPose:ToObjectSpace(self.Part.CFrame)}
 	end
 
 	function controller:Destroy()
@@ -571,6 +581,12 @@ local ThemePresets = {
  Midnight = {{13,18,32},{24,33,53},{232,239,255},{146,166,198},{111,159,255}},
  Forest = {{15,26,22},{26,43,35},{232,246,237},{150,179,162},{108,209,153}},
 }
+NullUI.Theme.ToggleOn = Color3.fromRGB(255,255,255)
+NullUI.Theme.ToggleOff = Color3.fromRGB(46,50,49)
+NullUI.Theme.ToggleKnob = Color3.fromRGB(226,230,228)
+NullUI.Theme.SliderFill = Color3.fromRGB(255,255,255)
+NullUI.Theme.SliderKnob = Color3.fromRGB(255,255,255)
+NullUI.Theme.Card = Color3.fromRGB(255,255,255)
 local ThemeTokens = {"Background", "Surface", "Text", "TextDim", "Accent"}
 local function BindTheme(instance, property, token)
  local bindings = ThemeBindings[instance] or {}
@@ -589,12 +605,13 @@ function NullUI:SetTheme(value)
   assert(type(value) == "table", "Theme must be a name or color table")
   self._ThemeName = "Custom"
  end
+ local changed = {}
  for token, color in pairs(colors) do
-  if typeof(self.Theme[token]) == "Color3" and typeof(color) == "Color3" then self.Theme[token] = color end
+  if typeof(self.Theme[token]) == "Color3" and typeof(color) == "Color3" and self.Theme[token] ~= color then self.Theme[token] = color; changed[token] = true end
  end
  for instance, bindings in pairs(ThemeBindings) do
   if instance.Parent then
-   for property, token in pairs(bindings) do instance[property] = self.Theme[token] end
+   for property, token in pairs(bindings) do if changed[token] then instance[property] = self.Theme[token] end end
   end
  end
  return self
@@ -2073,7 +2090,7 @@ local DRAG_THRESHOLD = 6
 
 local function BaseCard(parent, height)
 	local card = Instance.new("Frame")
-	card.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(card, "BackgroundColor3", "Card")
 	card.BackgroundTransparency = 0.96
 	card.BorderSizePixel = 0
 	card.Size = UDim2.new(1, 0, 0, height or 44)
@@ -6636,7 +6653,7 @@ function Tab:AddToggle(opts)
 	switchBg.AnchorPoint = Vector2.new(1, 0.5)
 	switchBg.Position = UDim2.new(1, -14, 0.5, 0)
 	switchBg.Size = UDim2.fromOffset(40, 22)
-	switchBg.BackgroundColor3 = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(46, 50, 49)
+	BindTheme(switchBg, "BackgroundColor3", state and "ToggleOn" or "ToggleOff")
 	switchBg.BackgroundTransparency = state and 0 or 0.32
 	switchBg.BorderSizePixel = 0
 	switchBg.ZIndex = Z.Content + 1
@@ -6672,7 +6689,7 @@ function Tab:AddToggle(opts)
 	knob.Size = UDim2.fromOffset(16, 16)
 	knob.Position = state and UDim2.new(1, -19, 0.5, 0) or UDim2.new(0, 3, 0.5, 0)
 	knob.AnchorPoint = Vector2.new(0, 0.5)
-	knob.BackgroundColor3 = state and Color3.fromRGB(18, 18, 18) or Color3.fromRGB(226, 230, 228)
+	BindTheme(knob, "BackgroundColor3", "ToggleKnob")
 	knob.BackgroundTransparency = state and 0 or 0.06
 	knob.BorderSizePixel = 0
 	knob.ZIndex = Z.Content + 2
@@ -6688,10 +6705,11 @@ function Tab:AddToggle(opts)
 	click.Parent = card
 
 	local function render()
+  BindTheme(switchBg, "BackgroundColor3", state and "ToggleOn" or "ToggleOff")
 		local anim = 0.28
 		local style, dir = Enum.EasingStyle.Quint, Enum.EasingDirection.InOut
 		Tween(switchBg, {
-			BackgroundColor3 = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(46, 50, 49),
+			BackgroundColor3 = state and NullUI.Theme.ToggleOn or NullUI.Theme.ToggleOff,
 			BackgroundTransparency = state and 0 or 0.32,
 		}, anim, style, dir)
 		Tween(switchStroke, {
@@ -6703,7 +6721,7 @@ function Tab:AddToggle(opts)
 			NumberSequenceKeypoint.new(1, state and 0 or 0.94),
 		})
 		Tween(knob, {
-			BackgroundColor3 = state and Color3.fromRGB(18, 18, 18) or Color3.fromRGB(226, 230, 228),
+			BackgroundColor3 = NullUI.Theme.ToggleKnob,
 			BackgroundTransparency = state and 0 or 0.06,
 			Position = state and UDim2.new(1, -19, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
 		}, anim, style, dir)
@@ -6842,7 +6860,7 @@ function Tab:AddSlider(opts)
 	Corner(track, 3)
 
 	local fill = Instance.new("Frame")
-	fill.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(fill, "BackgroundColor3", "SliderFill")
 	fill.BackgroundTransparency = 0
 	fill.BorderSizePixel = 0
 	fill.Size = UDim2.new(SafeAlpha(value, min, max), 0, 1, 0)
@@ -6854,7 +6872,7 @@ function Tab:AddSlider(opts)
 	knob.AnchorPoint = Vector2.new(0.5, 0.5)
 	knob.Position = UDim2.new(SafeAlpha(value, min, max), 0, 0.5, 0)
 	knob.Size = UDim2.fromOffset(12, 12)
-	knob.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(knob, "BackgroundColor3", "SliderKnob")
 	knob.BackgroundTransparency = 0
 	knob.BorderSizePixel = 0
 	knob.ZIndex = Z.Content + 3
@@ -10432,6 +10450,14 @@ function Window:AddAppearanceTab(options)
 	local opacitySection = tab:AddCollapsibleSection({Title = "Window background", Icon = "Lucide:blend"})
  opacitySection:AddSlider({Text = "Background transparency", Description = "0 = opaque, 100 = transparent", Min = 0, Max = 100, Default = (self._BackgroundTransparency or 0.15) * 100,
   Callback = function(value) self:SetBackgroundTransparency(value / 100) end})
+ local controls = tab:AddCollapsibleSection({Title = "Control colors", Icon = "Lucide:sliders-horizontal"})
+ for _, item in ipairs({{"ToggleOn","Toggle enabled"},{"ToggleOff","Toggle disabled"},{"ToggleKnob","Toggle knob"},{"SliderFill","Slider fill"},{"SliderKnob","Slider knob"},{"Card","Cards"}}) do
+  local token = item[1]
+  controls:AddColorPicker({Text = item[2], Default = NullUI.Theme[token], Callback = function(color) NullUI:SetTheme({[token] = color}) end})
+ end
+ local sizing = tab:AddCollapsibleSection({Title = "Layout", Icon = "Lucide:layout-dashboard"})
+ sizing:AddDropdown({Text = "Density", Options = {"comfortable","compact"}, Default = NullUI:GetDensity(), Callback = function(value) NullUI:SetDensity(value) end})
+ sizing:AddButton({Text = "Reset window layout", Callback = function() self:ResetLayout() end})
  local imageSection = tab:AddCollapsibleSection({Title = "Background image"})
 	imageSection:AddTextbox({Text = "Image", Description = "Numeric ID or rbxassetid://...", Default = "", Callback = function(value) self:SetBackground({Image = value}) end})
 	imageSection:AddSlider({Text = "Transparency", Min = 0, Max = 100, Default = 70, Callback = function(value) self:SetBackground({Transparency = value / 100}) end})
