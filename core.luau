@@ -3447,7 +3447,11 @@ function Window:AddTab(nameOrOpts)
 		if hidden then
 			Tween(self._tabIndicator, { BackgroundTransparency = 1 }, 0.15)
 		else
-			Tween(self._tabIndicator, {
+			if self._indicatorTween then self._indicatorTween:Cancel() end
+   if not previousTab then
+    self._tabIndicator.Position = UDim2.new(0, 0, 0, indicatorY())
+   end
+   self._indicatorTween = Tween(self._tabIndicator, {
 				Position = UDim2.new(0, 0, 0, indicatorY()),
 				BackgroundTransparency = 0.88,
 			}, 0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
@@ -3518,6 +3522,7 @@ function Window:AddTab(nameOrOpts)
 	if not hidden then
 		jan:Add(tabButton:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
 			if self._currentTab == tabObj then
+    if self._indicatorTween then self._indicatorTween:Cancel(); self._indicatorTween = nil end
 				self._tabIndicator.Position = UDim2.new(0, 0, 0, indicatorY())
 			end
 		end))
