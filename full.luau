@@ -7722,14 +7722,7 @@ function Tab:AddColorPicker(opts)
 
 		popupBackdrop = MakePopupBackdrop(requestCloseFromBackdrop)
 
-		popupFrame = Instance.new("ScrollingFrame")
-		popupFrame.CanvasSize = UDim2.fromOffset(0, 0)
-		popupFrame.ScrollingEnabled = false
-		popupFrame.ScrollingDirection = Enum.ScrollingDirection.Y
-		popupFrame.ScrollBarThickness = 3
-		BindTheme(popupFrame, "ScrollBarImageColor3", "TextDim")
-		popupFrame.ScrollBarImageTransparency = 0.35
-		popupFrame.BorderSizePixel = 0
+		popupFrame = Instance.new("Frame")
 		popupFrame.Name = "ColorPickerPopup"
 		popupFrame.Active = true
 		BindTheme(popupFrame, "BackgroundColor3", "Background")
@@ -7741,7 +7734,16 @@ function Tab:AddColorPicker(opts)
 		popupFrame.Parent = root
 		Corner(popupFrame, 10)
 		local popupStroke = Stroke(popupFrame, Color3.new(1, 1, 1), 1, 0.92)
-		GlassLayer(popupFrame, 10, 0.985)
+		local solidBackground = Instance.new("Frame")
+  solidBackground.Name = "OpaqueBackground"
+  solidBackground.Size = UDim2.new(1, 28, 1, 28)
+  solidBackground.Position = UDim2.fromOffset(-14, -14)
+  solidBackground.BackgroundTransparency = 0
+  solidBackground.BorderSizePixel = 0
+  solidBackground.ZIndex = Z.Popup
+  BindTheme(solidBackground, "BackgroundColor3", "Background")
+  solidBackground.Parent = popupFrame
+  Corner(solidBackground, 10)
 
 		popupFrame.AnchorPoint = Vector2.new(0.5, 0.5)
   local fit = Instance.new("UIScale")
