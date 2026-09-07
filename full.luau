@@ -3449,8 +3449,8 @@ function Window:AddTab(nameOrOpts)
 		if hidden then
 			Tween(self._tabIndicator, { BackgroundTransparency = 1 }, 0.15)
 		else
+			self._tabIndicator.Position = UDim2.new(0, 0, 0, indicatorY())
 			Tween(self._tabIndicator, {
-				Position = UDim2.new(0, 0, 0, indicatorY()),
 				BackgroundTransparency = 0.88,
 			}, 0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 		end
@@ -4295,9 +4295,9 @@ function Window:_OpenSearch()
 	end)
 end
 
-local SUBTAB_EXIT  = 0.18
-local SUBTAB_GAP   = 0.08
-local SUBTAB_ENTER = 0.30
+local SUBTAB_EXIT  = 0.28
+local SUBTAB_GAP   = 0.06
+local SUBTAB_ENTER = 0.46
 
 function Tab:AddSubTab(nameOrOpts)
 	local opts = type(nameOrOpts) == "table" and nameOrOpts or { Name = nameOrOpts }
@@ -5933,8 +5933,8 @@ function Tab:AddInfoGrid(opts)
 		accent.Name = "Accent"
 		accent.BackgroundColor3 = color
 		accent.BorderSizePixel = 0
-		accent.Size = UDim2.new(0, 3, 1, -12)
-		accent.Position = UDim2.fromOffset(0, 6)
+		accent.Size = UDim2.new(0, 3, 1, PAD * 2 - 16)
+		accent.Position = UDim2.fromOffset(6 - (PAD + 6), 8 - PAD)
 		accent.ZIndex = Z.Content + 1
 		accent.Parent = card
 		Corner(accent, 1.5)
@@ -10206,11 +10206,11 @@ function Tab:AddTabBox(options)
    for _, item in ipairs(self.Tabs) do item._page.Visible = item == selected end
    selected._page.GroupTransparency = previous and 1 or 0
    if previous then
-    transition = Tween(selected._page, {GroupTransparency = 0}, 0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    transition = Tween(selected._page, {GroupTransparency = 0}, 0.42, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
    end
   end
   if previous and previous._page.Visible then
-   transition = TweenService:Create(previous._page, TweenInfo.new(0.09, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {GroupTransparency = 1})
+   transition = TweenService:Create(previous._page, TweenInfo.new(0.24, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {GroupTransparency = 1})
    completion = transition.Completed:Connect(function()
     if completion then completion:Disconnect(); completion = nil end
     reveal()
@@ -10223,8 +10223,8 @@ function Tab:AddTabBox(options)
    BindTheme(tab._button, "TextColor3", tab == selected and "Text" or "TextDim")
    if tab._label then BindTheme(tab._label, "TextColor3", tab == selected and "Text" or "TextDim") end
    if tab._icon then BindTheme(tab._icon, "ImageColor3", tab == selected and "Text" or "TextDim") end
-   Tween(tab._button, {BackgroundTransparency = tab == selected and 0.96 or 1}, 0.18)
-   Tween(tab._underline, {BackgroundTransparency = tab == selected and 0.1 or 1}, 0.18)
+   Tween(tab._button, {BackgroundTransparency = tab == selected and 0.96 or 1}, 0.30, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+   Tween(tab._underline, {BackgroundTransparency = tab == selected and 0.1 or 1}, 0.30, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
   end
  end
  function box:AddTab(value)
