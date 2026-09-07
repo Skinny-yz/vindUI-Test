@@ -1,0 +1,18 @@
+Resultados desta entrega
+
+{
+  "core.luau": 9857,
+  "example.luau": 39,
+  "full.luau": 13918,
+  "integrations.luau": 4055,
+  "modules/assistant.luau": 1249,
+  "modules/chat-common.luau": 185,
+  "modules/cloud.luau": 1306,
+  "modules/feedback.luau": 108,
+  "modules/spotify.luau": 1194
+}
+
+PASS: compilação de todos os .luau distribuídos.
+PASS: smoke tests com mocks Roblox (sem renderização/HTTP/timers).
+PASS: escala em seis viewports deitados e ajuste da referência.
+Pendente: validação visual e toque no Roblox real; serviços externos.

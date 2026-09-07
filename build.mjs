@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+const root=path.dirname(fileURLToPath(import.meta.url));
+const read=f=>fs.readFileSync(path.join(root,f),'utf8');
+const names=['chat-common','spotify','assistant','cloud','feedback'];
+const bundle='--!nonstrict\nreturn { Name = "integrations", Modules = {\n'+names.map(n=>'(function()\n'+read('modules/'+n+'.luau')+'end)()').join(',\n')+'\n}}\n';
+fs.writeFileSync(path.join(root,'integrations.luau'),bundle);
+fs.writeFileSync(path.join(root,'full.luau'),'--!nonstrict\nlocal UI = (function()\n'+read('core.luau')+'end)()\nUI:Use((function()\n'+bundle+'end)())\nreturn UI\n');
+console.log('integrations.luau e full.luau atualizados.');

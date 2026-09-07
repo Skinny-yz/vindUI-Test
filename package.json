@@ -1,0 +1,12 @@
+{
+  "name": "vind-ui-modular",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node tests/compile.mjs && node tests/smoke.mjs && node tests/scale-test.mjs"
+  },
+  "devDependencies": {
+    "luau-web": "1.4.0"
+  }
+}
