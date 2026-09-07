@@ -198,20 +198,18 @@ local function UpdateAllAcrylic()
 	end
 end
 
--- Acrylic must follow the final camera pose in the same rendered frame.
-local AcrylicRenderName = "NullUI_Acrylic_" .. tostring(AcrylicControllers)
-RunService:BindToRenderStep(AcrylicRenderName, Enum.RenderPriority.Last.Value + 1, function()
- if not AcrylicShuttingDown and #AcrylicControllers > 0 then
-  UpdateAllAcrylic()
- end
-end)
-LibJanitor:Add(function()
- RunService:UnbindFromRenderStep(AcrylicRenderName)
-end)
-
 local function BindAcrylicCamera(camera)
- DisconnectCameraSignals()
- UpdateAllAcrylic()
+	DisconnectCameraSignals()
+	if not camera then return end
+
+	local function connect(property)
+		table.insert(CameraConnections,
+			camera:GetPropertyChangedSignal(property):Connect(UpdateAllAcrylic))
+	end
+	connect("CFrame")
+	connect("ViewportSize")
+	connect("FieldOfView")
+	UpdateAllAcrylic()
 end
 
 local function CreateWindowAcrylic(guiObject)
@@ -309,7 +307,12 @@ local function CreateWindowAcrylic(guiObject)
 		RefreshAcrylicEffect()
 	end
 
-
+	for _, property in ipairs({ "AbsolutePosition", "AbsoluteSize", "Visible" }) do
+		table.insert(controller.Connections,
+			guiObject:GetPropertyChangedSignal(property):Connect(function()
+				controller:Update()
+			end))
+	end
 	table.insert(controller.Connections, guiObject.AncestryChanged:Connect(function()
 		if not guiObject.Parent then controller:Destroy() end
 	end))
@@ -9910,21 +9913,21 @@ do
 	end
 end
 
-local function CollapsibleHeading(header, title, inset, token)
+local function CollapsibleHeading(header, title, inset, token, rightAligned)
  header.Text = ""
  local icon = Instance.new("ImageLabel")
  icon.Name = "CollapseChevron"
  icon.BackgroundTransparency = 1
  icon.Size = UDim2.fromOffset(14, 14)
- icon.AnchorPoint = Vector2.new(0, 0.5)
- icon.Position = UDim2.new(0, inset, 0.5, 0)
+ icon.AnchorPoint = Vector2.new(rightAligned and 1 or 0, 0.5)
+ icon.Position = rightAligned and UDim2.new(1, -inset, 0.5, 0) or UDim2.new(0, inset, 0.5, 0)
  icon.Image = ResolveIcon("Lucide:chevron-down")
  BindTheme(icon, "ImageColor3", token)
  icon.Parent = header
  local label = Instance.new("TextLabel")
  label.Name = "HeadingText"
  label.BackgroundTransparency = 1
- label.Position = UDim2.fromOffset(inset + 22, 0)
+ label.Position = UDim2.fromOffset(rightAligned and inset or (inset + 22), 0)
  label.Size = UDim2.new(1, -(inset + 32), 1, 0)
  label.FontFace = header.FontFace
  label.TextSize = header.TextSize
@@ -9934,6 +9937,63 @@ local function CollapsibleHeading(header, title, inset, token)
  BindTheme(label, "TextColor3", token)
  label.Parent = header
  return icon
+end
+
+local function AnimateCollapsibleBody(body, chevron, janitor)
+ local clip = Instance.new("Frame")
+ clip.Name = "CollapseViewport"
+ clip.BackgroundTransparency = 1
+ clip.ClipsDescendants = true
+ clip.LayoutOrder = body.LayoutOrder
+ clip.Size = UDim2.new(1, 0, 0, 0)
+ clip.Parent = body.Parent
+ body.Parent = clip
+ local collapsed, initialized = false, false
+ local heightTween, arrowTween, completion
+ local targetHeight = -1
+ local disposed = false
+ local function cancelHeight()
+  if completion then completion:Disconnect(); completion = nil end
+  if heightTween then heightTween:Cancel(); heightTween = nil end
+ end
+ local function apply(immediate)
+  if disposed then return end
+  local height = collapsed and 0 or math.max(0, body.AbsoluteSize.Y / GetUIScale())
+  if height == targetHeight and not immediate then return end
+  targetHeight = height
+  cancelHeight()
+  clip.Visible = true
+  if immediate then
+   clip.Size = UDim2.new(1, 0, 0, height)
+   clip.Visible = not collapsed
+   return
+  end
+  heightTween = TweenService:Create(clip, TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, height)})
+  completion = heightTween.Completed:Connect(function()
+   if completion then completion:Disconnect(); completion = nil end
+   clip.Visible = not collapsed
+  end)
+  heightTween:Play()
+ end
+ janitor:Add(body:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() apply(not initialized) end))
+ janitor:Add(function()
+  disposed = true
+  cancelHeight()
+  if arrowTween then arrowTween:Cancel() end
+ end)
+ return function(value)
+  local nextCollapsed = value == true
+  if initialized and nextCollapsed == collapsed then return end
+  collapsed = nextCollapsed
+  if arrowTween then arrowTween:Cancel() end
+  if not initialized and chevron then
+   chevron.Rotation = collapsed and -90 or 0
+  elseif chevron then
+   arrowTween = Tween(chevron, {Rotation = collapsed and -90 or 0}, 0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+  end
+  apply(not initialized)
+  initialized = true
+ end
 end
 
 function Window:AddTabGroup(options)
@@ -9971,13 +10031,13 @@ function Window:AddTabGroup(options)
 	list.SortOrder = Enum.SortOrder.LayoutOrder
 	list.Parent = body
 	local chevron = CollapsibleHeading(header, options.Name or "Group", 6, "TextDim")
+	local animate = AnimateCollapsibleBody(body, chevron, self._janitor)
 	function group:SetCollapsed(value)
 		self.Collapsed = value == true
-		body.Visible = not self.Collapsed
+		animate(self.Collapsed)
 		for _, tab in ipairs(self.Tabs or {}) do
 			if tab._window._currentTab == tab then tab._window._tabIndicator.Visible = not self.Collapsed end
 		end
-		chevron.Rotation = self.Collapsed and -90 or 0
 	end
 	function group:Toggle() self:SetCollapsed(not self.Collapsed) end
 	local window = self
@@ -10031,14 +10091,14 @@ function Tab:AddCollapsibleSection(options)
 	local section = setmetatable({Name = self.Name, Instance = frame, _page = body, _window = self._window,
 		_group = self._group, _janitor = self._janitor, _RootTab = self._RootTab or self,
 		_ParentSection = self._IsSection and self or nil, _IsSection = true}, Tab)
-	local chevron = CollapsibleHeading(header, options.Title or options.Text or "Section", 12, "Text")
+	local chevron = CollapsibleHeading(header, options.Title or options.Text or "Section", 12, "Text", true)
+	local animate = AnimateCollapsibleBody(body, chevron, self._janitor)
 	function section:SetCollapsed(value)
 		self.Collapsed = value == true
-		body.Visible = not self.Collapsed
+		animate(self.Collapsed)
 		for _, tab in ipairs(self.Tabs or {}) do
 			if tab._window._currentTab == tab then tab._window._tabIndicator.Visible = not self.Collapsed end
 		end
-		chevron.Rotation = self.Collapsed and -90 or 0
 	end
 	function section:Toggle() self:SetCollapsed(not self.Collapsed) end
 	function section:Expand()
@@ -10053,6 +10113,128 @@ function Tab:AddCollapsibleSection(options)
 	self._janitor:Add(header.Activated:Connect(function() section:Toggle() end))
 	section:SetCollapsed(options.Collapsed == true)
 	return section
+end
+
+local function EmbeddedPage(parent, body, selectPage)
+ return setmetatable({Name = parent.Name, _page = body, _window = parent._window,
+  _group = parent._group, _janitor = parent._janitor,
+  _RootTab = parent._RootTab or parent, _select = selectPage}, Tab)
+end
+
+local function SelectEmbeddedParent(parent)
+ if parent._select then parent._select()
+ elseif parent._parentTab then parent._parentTab._select(); parent._parentTab:SelectSubTab(parent._subTabIdx) end
+end
+
+function Tab:AddTabBox(options)
+ options = options or {}
+ local parent = self
+ local frame = BaseCard(self._page, 0)
+ frame.Name = "TabBox"
+ frame.AutomaticSize = Enum.AutomaticSize.Y
+ local layout = Instance.new("UIListLayout")
+ layout.SortOrder = Enum.SortOrder.LayoutOrder
+ layout.Parent = frame
+ local bar = Instance.new("ScrollingFrame")
+ bar.Name = "TabBoxTabs"
+ bar.BackgroundTransparency = 1
+ bar.BorderSizePixel = 0
+ bar.Size = UDim2.new(1, 0, 0, 38)
+ bar.CanvasSize = UDim2.new()
+ bar.AutomaticCanvasSize = Enum.AutomaticSize.X
+ bar.ScrollingDirection = Enum.ScrollingDirection.X
+ bar.ScrollBarThickness = 2
+ BindTheme(bar, "ScrollBarImageColor3", "TextDim")
+ bar.Parent = frame
+ local row = Instance.new("UIListLayout")
+ row.FillDirection = Enum.FillDirection.Horizontal
+ row.SortOrder = Enum.SortOrder.LayoutOrder
+ row.Parent = bar
+ local box = {Instance = frame, Tabs = {}}
+ function box:SelectTab(value)
+  local selected
+  for index, tab in ipairs(self.Tabs) do
+   if value == index or value == tab.Name or value == tab then selected = tab; break end
+  end
+  if not selected then return end
+  self.Selected = selected
+  for _, tab in ipairs(self.Tabs) do
+   tab._page.Visible = tab == selected
+   BindTheme(tab._button, "TextColor3", tab == selected and "Text" or "TextDim")
+   Tween(tab._button, {BackgroundTransparency = tab == selected and 0.92 or 1}, 0.15)
+  end
+ end
+ function box:AddTab(value)
+  local opts = type(value) == "string" and {Name = value} or (value or {})
+  local button = Instance.new("TextButton")
+  button.AutoButtonColor = false
+  button.Text = opts.Name or "Tab"
+  button.FontFace = NullUI.Theme.Font
+  button.TextSize = 13
+  button.Size = UDim2.fromOffset(math.max(100, MeasureText(button.Text, 13) + 28), 34)
+  button.BackgroundTransparency = 1
+  BindTheme(button, "BackgroundColor3", "Accent")
+  button.Parent = bar
+  local body = Instance.new("Frame")
+  body.BackgroundTransparency = 1
+  body.Size = UDim2.new(1, 0, 0, 0)
+  body.AutomaticSize = Enum.AutomaticSize.Y
+  body.LayoutOrder = 1
+  body.Visible = false
+  body.Parent = frame
+  local padding = Instance.new("UIPadding")
+  padding.PaddingLeft = UDim.new(0, 8)
+  padding.PaddingRight = UDim.new(0, 8)
+  padding.PaddingTop = UDim.new(0, 8)
+  padding.PaddingBottom = UDim.new(0, 8)
+  padding.Parent = body
+  local list = Instance.new("UIListLayout")
+  list.Padding = UDim.new(0, 8)
+  list.SortOrder = Enum.SortOrder.LayoutOrder
+  list.Parent = body
+  local tab
+  tab = EmbeddedPage(parent, body, function() SelectEmbeddedParent(parent); box:SelectTab(tab) end)
+  tab.Name = button.Text
+  tab._button = button
+  table.insert(self.Tabs, tab)
+  parent._janitor:Add(button.Activated:Connect(function() box:SelectTab(tab) end))
+  box:SelectTab(self.Selected or tab)
+  return tab
+ end
+ return box
+end
+
+function Tab:AddToggleSection(options)
+ options = options or {}
+ local section = self:AddCollapsibleSection({Title = options.Title or "Settings", Collapsed = options.Collapsed})
+ local toggle = section:AddToggle({Text = options.Text or "Enable", Default = options.Default == true, Flag = options.Flag, Callback = options.Callback})
+ local body = Instance.new("Frame")
+ body.Name = "DependentControls"
+ body.BackgroundTransparency = 1
+ body.Size = UDim2.new(1, 0, 0, 0)
+ body.AutomaticSize = Enum.AutomaticSize.Y
+ body.LayoutOrder = 1
+ body.Parent = section._page
+ local layout = Instance.new("UIListLayout")
+ layout.Padding = UDim.new(0, 8)
+ layout.SortOrder = Enum.SortOrder.LayoutOrder
+ layout.Parent = body
+ local animate = AnimateCollapsibleBody(body, nil, self._janitor)
+ animate(not toggle:Get())
+ self._janitor:Add(toggle:OnChanged(function(value) animate(not value) end))
+ local originalSet = toggle.Set
+ toggle.Set = function(handle, value, silent)
+  originalSet(handle, value, silent)
+  animate(not handle:Get())
+ end
+ local content = EmbeddedPage(section, body, function() section._select() end)
+ content.Toggle = toggle
+ content.Section = section
+ content.Instance = section.Instance
+ content.SetEnabled = function(_, value, silent) toggle:Set(value, silent) end
+ content.GetEnabled = function() return toggle:Get() end
+ content.SetCollapsed = function(_, value) section:SetCollapsed(value) end
+ return content
 end
 
 function Window:SetBackground(options)
