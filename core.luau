@@ -3363,11 +3363,11 @@ function Window:AddTab(nameOrOpts)
 	textLabel.ZIndex = Z.Content + 1
 	textLabel.Parent = row
 
-	local pageGroup = Instance.new("CanvasGroup")
+	local pageGroup = Instance.new("Frame")
+	pageGroup.ClipsDescendants = true
 	pageGroup.Name = name .. "Group"
 	pageGroup.BackgroundTransparency = 1
 	pageGroup.Size = UDim2.fromScale(1, 1)
-	pageGroup.GroupTransparency = 0
 	pageGroup.Visible = false
 	pageGroup.ZIndex = Z.Content
 	pageGroup.Parent = self._content
@@ -3471,8 +3471,7 @@ function Window:AddTab(nameOrOpts)
 		local function playEnter()
 			if self._tabSwitchToken ~= myToken then return end
 			pageGroup.Visible = true
-			pageGroup.GroupTransparency = 0
-			pageGroup.Position = UDim2.fromOffset(direction * 20, 0)
+					pageGroup.Position = UDim2.fromOffset(direction * 20, 0)
 			Tween(pageGroup, {
 				Position = UDim2.fromOffset(0, 0),
 			}, TRANSITION_ENTER, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
@@ -7200,7 +7199,8 @@ function Tab:AddDropdown(opts)
 
 		popupBackdrop = MakePopupBackdrop(closePopup)
 
-		popupFrame = Instance.new("CanvasGroup")
+		popupFrame = Instance.new("Frame")
+		popupFrame.ClipsDescendants = true
 		popupFrame.Name = "DropdownPopup"
 		popupFrame.Active = true
 		BindTheme(popupFrame, "BackgroundColor3", "Background")
@@ -9095,7 +9095,8 @@ function Tab:AddCardGrid(opts)
 		px = SafeClamp(px, 8, view.X / scale - popupW - 8)
 		py = SafeClamp(py, 8, view.Y / scale - popupH - 8)
 
-		popup = Instance.new("CanvasGroup")
+		popup = Instance.new("Frame")
+		popup.ClipsDescendants = true
 		popup.Name = "CardActionsPopup"
 		popup.Active = true
 		BindTheme(popup, "BackgroundColor3", "Background")
