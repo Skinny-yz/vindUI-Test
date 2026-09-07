@@ -1,6 +1,5 @@
---!nonstrict
+
 local UI = (function()
---!nonstrict
 local TweenService      = game:GetService("TweenService")
 local Players           = game:GetService("Players")
 local UserInputService  = game:GetService("UserInputService")
@@ -2591,7 +2590,7 @@ function Window:_RefreshFooter()
 	end
 	local showProfile = not hasButtons and self._UserInfoOptions.Enabled ~= false
 	self._UserInfoFrame.Visible = showProfile
-	local reserve = (hasButtons and 44) or (showProfile and 52) or 0
+	local reserve = (hasButtons and 44) or (showProfile and 64) or 0
 	local size = UDim2.new(0, 130, 1, -(58 + NullUI.Theme.Margin + reserve))
 	self._tabBar.Size = size
 	self._tabIndicatorLayer.Size = size
@@ -2608,33 +2607,33 @@ function Window:SetUserInfo(options)
 		frame.BackgroundTransparency = 1
 		frame.AnchorPoint = Vector2.new(0, 1)
 		frame.Position = UDim2.new(0, NullUI.Theme.Margin, 1, -NullUI.Theme.Margin)
-		frame.Size = UDim2.fromOffset(130, 42)
+		frame.Size = UDim2.fromOffset(130, 54)
 		frame.ZIndex = Z.Content
 		frame.Parent = self._gui
 		local avatar = Instance.new("ImageLabel")
 		avatar.BackgroundTransparency = 1
-		avatar.Size = UDim2.fromOffset(28, 28)
+		avatar.Size = UDim2.fromOffset(40, 40)
 		avatar.Position = UDim2.fromOffset(0, 7)
 		avatar.ZIndex = Z.Content + 1
 		avatar.Parent = frame
-		Corner(avatar, 14)
+		Corner(avatar, 20)
 		local name = Instance.new("TextLabel")
 		name.BackgroundTransparency = 1
 		name.FontFace = NullUI.Theme.Font
 		name.TextColor3 = NullUI.Theme.Text
-		name.TextSize = 12
+		name.TextSize = 14
 		name.TextXAlignment = Enum.TextXAlignment.Left
 		name.TextTruncate = Enum.TextTruncate.AtEnd
-		name.Position = UDim2.fromOffset(36, 6)
-		name.Size = UDim2.new(1, -36, 0, 16)
+		name.Position = UDim2.fromOffset(48, 9)
+		name.Size = UDim2.new(1, -48, 0, 19)
 		name.ZIndex = Z.Content + 1
 		name.Parent = frame
 		local username = name:Clone()
 		username.FontFace = NullUI.Theme.FontRegular
 		username.TextColor3 = NullUI.Theme.TextDim
-		username.TextSize = 10
-		username.Position = UDim2.fromOffset(36, 23)
-		username.Size = UDim2.new(1, -36, 0, 13)
+		username.TextSize = 12
+		username.Position = UDim2.fromOffset(48, 30)
+		username.Size = UDim2.new(1, -48, 0, 16)
 		username.Parent = frame
 		self._UserInfoFrame, self._UserAvatar, self._UserName, self._UserHandle = frame, avatar, name, username
 	end
@@ -2642,7 +2641,7 @@ function Window:SetUserInfo(options)
 	self._UserName.Text = anonymous and "Anônimo" or (settings.NameMode == "username" and LocalPlayer.Name or LocalPlayer.DisplayName)
 	self._UserHandle.Text = anonymous and "" or ("@" .. LocalPlayer.Name)
 	self._UserHandle.Visible = not anonymous
-	self._UserName.Position = UDim2.fromOffset(36, anonymous and 13 or 6)
+	self._UserName.Position = UDim2.fromOffset(48, anonymous and 18 or 9)
 	self._UserAvatarRevision = (self._UserAvatarRevision or 0) + 1
 	local revision = self._UserAvatarRevision
 	local image = tostring(settings.Avatar or "player")
