@@ -7731,7 +7731,7 @@ function Tab:AddColorPicker(opts)
 		popupFrame.Name = "ColorPickerPopup"
 		popupFrame.Active = true
 		BindTheme(popupFrame, "BackgroundColor3", "Background")
-		popupFrame.BackgroundTransparency = 1
+		popupFrame.BackgroundTransparency = 0
 		popupFrame.BorderSizePixel = 0
 		popupFrame.ClipsDescendants = true
 		popupFrame.ZIndex = Z.Popup
@@ -8009,7 +8009,7 @@ function Tab:AddColorPicker(opts)
 
 		Tween(popupFrame, {
 			Size = UDim2.new(0, popupW, 0, popupH),
-			BackgroundTransparency = 0.15,
+			BackgroundTransparency = 0,
 		}, 0.44, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 		Tween(popupStroke, { Transparency = 0.85 }, 0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 
