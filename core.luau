@@ -2756,7 +2756,7 @@ function Window:SetUserInfo(options)
 		avatar.ZIndex = Z.Content + 1
 		avatar.Parent = frame
 		Corner(avatar, 20)
-  local avatarOutline = Stroke(avatar, NullUI.Theme.TextDim, 1, 0.45)
+  local avatarOutline = Stroke(avatar, NullUI.Theme.TextDim, 0.8, 0.72)
   avatarOutline.Name = "AvatarOutline"
   BindTheme(avatarOutline, "Color", "TextDim")
 		local name = Instance.new("TextLabel")

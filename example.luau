@@ -41,8 +41,8 @@ local Window = VindUI:CreateWindow({
 	Draggable = true,
 	Resizable = true,
 	UseBlur = true,
-	DefaultTab = "Home",
-	TabWidth = 145, -- Sidebar width
+	DefaultTab = "Components",
+	TabWidth = 145,
 	TabScrollbar = true, -- false hides the sidebar scrollbar; scrolling stays enabled
 	UserInfo = getgenv().CONFIG.UserInfo,
 })
@@ -237,7 +237,7 @@ end})
 -- Extended component and API catalog
 do
 local Tabs = {}
-local Catalog = Window:AddTabGroup({Name = "FULL CATALOG", Collapsed = true})
+local Catalog = Window:AddTabGroup({Name = "ALL ELEMENTS", Collapsed = false})
 Tabs.Home = Catalog:AddTab({ Name = "Insights", Icon = "Lucide:layout-dashboard" })
 
 local Details = Tabs.Home:AddSubTab({ Name = "Details And Info", Icon = "Lucide:layout-grid" })
@@ -1200,5 +1200,5 @@ Panels:AddButton({Text = "Interface preferences", Callback = function()
     Window:AddUIPreferences()
     Window:SelectTab("Interface")
 end})
-Window:SelectTab("Home")
+Window:SelectTab("Components")
 Window:Open()
