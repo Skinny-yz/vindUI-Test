@@ -10129,23 +10129,24 @@ function Tab:AddTabBox(options)
  local parent = self
  local frame = BaseCard(self._page, 0)
  frame.Name = "TabBox"
+ frame.BackgroundTransparency = 0.98
  frame.AutomaticSize = Enum.AutomaticSize.Y
  local inset = Instance.new("UIPadding")
- inset.PaddingLeft = UDim.new(0, 8)
- inset.PaddingRight = UDim.new(0, 8)
- inset.PaddingTop = UDim.new(0, 8)
- inset.PaddingBottom = UDim.new(0, 8)
+ inset.PaddingLeft = UDim.new(0, 12)
+ inset.PaddingRight = UDim.new(0, 12)
+ inset.PaddingTop = UDim.new(0, 12)
+ inset.PaddingBottom = UDim.new(0, 12)
  inset.Parent = frame
  local layout = Instance.new("UIListLayout")
  layout.SortOrder = Enum.SortOrder.LayoutOrder
  layout.Parent = frame
  local bar = Instance.new("ScrollingFrame")
  bar.Name = "TabBoxTabs"
- bar.BackgroundTransparency = 0.96
+ bar.BackgroundTransparency = 1
  BindTheme(bar, "BackgroundColor3", "Accent")
  Corner(bar, 8)
  bar.BorderSizePixel = 0
- bar.Size = UDim2.new(1, 0, 0, 36)
+ bar.Size = UDim2.new(1, 0, 0, 40)
  bar.CanvasSize = UDim2.new()
  bar.AutomaticCanvasSize = Enum.AutomaticSize.X
  bar.ScrollingDirection = Enum.ScrollingDirection.X
@@ -10162,8 +10163,8 @@ function Tab:AddTabBox(options)
   local count = #box.Tabs
   if count == 0 then return end
   local available = bar.AbsoluteSize.X / GetUIScale()
-  local width = math.max(100, (available - (count - 1) * 4) / count)
-  for _, tab in ipairs(box.Tabs) do tab._button.Size = UDim2.fromOffset(width, 34) end
+  local width = math.max(80, (available - (count - 1) * 4) / count)
+  for _, tab in ipairs(box.Tabs) do tab._button.Size = UDim2.fromOffset(width, 36) end
  end
  parent._janitor:Add(BindWidthLayout(bar, resizeButtons))
  function box:SelectTab(value)
@@ -10176,7 +10177,10 @@ function Tab:AddTabBox(options)
   for _, tab in ipairs(self.Tabs) do
    tab._page.Visible = tab == selected
    BindTheme(tab._button, "TextColor3", tab == selected and "Text" or "TextDim")
-   Tween(tab._button, {BackgroundTransparency = tab == selected and 0.92 or 1}, 0.15)
+   if tab._label then BindTheme(tab._label, "TextColor3", tab == selected and "Text" or "TextDim") end
+   if tab._icon then BindTheme(tab._icon, "ImageColor3", tab == selected and "Text" or "TextDim") end
+   Tween(tab._button, {BackgroundTransparency = tab == selected and 0.96 or 1}, 0.18)
+   Tween(tab._underline, {BackgroundTransparency = tab == selected and 0.1 or 1}, 0.18)
   end
  end
  function box:AddTab(value)
@@ -10186,11 +10190,43 @@ function Tab:AddTabBox(options)
   button.Text = opts.Name or "Tab"
   button.FontFace = NullUI.Theme.Font
   button.TextSize = 13
-  button.Size = UDim2.fromOffset(math.max(100, MeasureText(button.Text, 13) + 28), 34)
+  button.TextTruncate = Enum.TextTruncate.AtEnd
+  button.Size = UDim2.fromOffset(math.max(80, MeasureText(button.Text, 13) + 28), 34)
   button.BackgroundTransparency = 1
   BindTheme(button, "BackgroundColor3", "Accent")
   Corner(button, 7)
   button.Parent = bar
+  local underline = Instance.new("Frame")
+  underline.Name = "ActiveUnderline"
+  underline.BorderSizePixel = 0
+  underline.AnchorPoint = Vector2.new(0.5, 1)
+  underline.Position = UDim2.new(0.5, 0, 1, 0)
+  underline.Size = UDim2.new(1, -24, 0, 2)
+  underline.BackgroundTransparency = 1
+  BindTheme(underline, "BackgroundColor3", "Accent")
+  Corner(underline, 2)
+  underline.Parent = button
+  local icon, label
+  if opts.Icon then
+   button.Text = ""
+   icon = Instance.new("ImageLabel")
+   icon.BackgroundTransparency = 1
+   icon.Size = UDim2.fromOffset(15, 15)
+   icon.AnchorPoint = Vector2.new(0, 0.5)
+   icon.Position = UDim2.new(0, 10, 0.5, 0)
+   icon.Image = ResolveIcon(opts.Icon)
+   icon.Parent = button
+   label = Instance.new("TextLabel")
+   label.BackgroundTransparency = 1
+   label.Position = UDim2.fromOffset(31, 0)
+   label.Size = UDim2.new(1, -39, 1, -2)
+   label.FontFace = button.FontFace
+   label.TextSize = button.TextSize
+   label.TextXAlignment = Enum.TextXAlignment.Left
+   label.TextTruncate = Enum.TextTruncate.AtEnd
+   label.Text = opts.Name or "Tab"
+   label.Parent = button
+  end
   local body = Instance.new("Frame")
   body.BackgroundTransparency = 1
   body.Size = UDim2.new(1, 0, 0, 0)
@@ -10201,17 +10237,20 @@ function Tab:AddTabBox(options)
   local padding = Instance.new("UIPadding")
   padding.PaddingLeft = UDim.new(0, 0)
   padding.PaddingRight = UDim.new(0, 0)
-  padding.PaddingTop = UDim.new(0, 8)
+  padding.PaddingTop = UDim.new(0, 12)
   padding.PaddingBottom = UDim.new(0, 0)
   padding.Parent = body
   local list = Instance.new("UIListLayout")
-  list.Padding = UDim.new(0, 8)
+  list.Padding = UDim.new(0, 12)
   list.SortOrder = Enum.SortOrder.LayoutOrder
   list.Parent = body
   local tab
   tab = EmbeddedPage(parent, body, function() SelectEmbeddedParent(parent); box:SelectTab(tab) end)
-  tab.Name = button.Text
+  tab.Name = opts.Name or "Tab"
+  tab._icon = icon
+  tab._label = label
   tab._button = button
+  tab._underline = underline
   table.insert(self.Tabs, tab)
   resizeButtons()
   parent._janitor:Add(button.Activated:Connect(function() box:SelectTab(tab) end))
