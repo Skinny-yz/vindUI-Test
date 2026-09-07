@@ -3449,10 +3449,11 @@ function Window:AddTab(nameOrOpts)
 		if hidden then
 			Tween(self._tabIndicator, { BackgroundTransparency = 1 }, 0.15)
 		else
-			self._tabIndicator.Position = UDim2.new(0, 0, 0, indicatorY())
-			Tween(self._tabIndicator, {
-				BackgroundTransparency = 0.88,
-			}, 0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+			if self._indicatorTween then self._indicatorTween:Cancel() end
+   if not previousTab then self._tabIndicator.Position = UDim2.new(0, 0, 0, indicatorY()) end
+   self._indicatorTween = Tween(self._tabIndicator, {
+    Position = UDim2.new(0, 0, 0, indicatorY()), BackgroundTransparency = 0.88,
+   }, 0.42, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 		end
 
 		for _, t in pairs(self._tabs) do
@@ -3479,6 +3480,7 @@ function Window:AddTab(nameOrOpts)
 				Position = UDim2.fromOffset(-direction * 20, 0),
 			}, TRANSITION_EXIT, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
 			task.delay(TRANSITION_EXIT, function()
+    if self._tabSwitchToken ~= myToken then return end
 				if g then g.Visible = false end
 				task.delay(TRANSITION_GAP, playEnter)
 			end)
@@ -3521,6 +3523,7 @@ function Window:AddTab(nameOrOpts)
 	if not hidden then
 		jan:Add(tabButton:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
 			if self._currentTab == tabObj then
+    if self._indicatorTween then self._indicatorTween:Cancel(); self._indicatorTween = nil end
 				self._tabIndicator.Position = UDim2.new(0, 0, 0, indicatorY())
 			end
 		end))
@@ -7130,11 +7133,13 @@ function Tab:AddDropdown(opts)
 	local popupOpen = false
 	local popupFrame, popupBackdrop, followConn, scrollConn
 	local optionButtons = {}
+ local popupAcrylic
 
 	local function closePopup()
 		if not popupOpen then return end
 		popupOpen = false
 		RegisterPopupClose(closePopup)
+  if popupAcrylic then popupAcrylic:Destroy(); popupAcrylic = nil end
 		Tween(chevron, { Rotation = 0 }, 0.15)
 
 		if followConn then followConn:Disconnect(); followConn = nil end
@@ -7177,7 +7182,7 @@ function Tab:AddDropdown(opts)
 		local mainWindow = self._window and self._window._gui or root
 
 		local rowH = 38
-  local popupW, targetHeight = 440, 330
+  local popupW, targetHeight = 400, math.clamp(112 + #options * 44, 180, 370)
 
 		popupBackdrop = MakePopupBackdrop(closePopup)
 
@@ -7185,11 +7190,12 @@ function Tab:AddDropdown(opts)
 		popupFrame.Name = "DropdownPopup"
 		popupFrame.Active = true
 		BindTheme(popupFrame, "BackgroundColor3", "Background")
-		popupFrame.BackgroundTransparency = 0
+		popupFrame.BackgroundTransparency = 0.06
 		popupFrame.BorderSizePixel = 0
 		popupFrame.ZIndex = Z.Popup
 		popupFrame.Size = UDim2.new(0, popupW, 0, 0)
 		popupFrame.Parent = root
+  popupAcrylic = CreateWindowAcrylic(popupFrame)
 		Corner(popupFrame, 10)
 		local popupStroke = Stroke(popupFrame, Color3.new(1, 1, 1), 1, 0.92)
 
@@ -7233,15 +7239,29 @@ function Tab:AddDropdown(opts)
   search.PlaceholderText = "Search options..."
   search.FontFace = NullUI.Theme.FontRegular
   search.TextSize = 13
+  search.TextXAlignment = Enum.TextXAlignment.Left
   search.Position = UDim2.fromOffset(16,48)
   search.Size = UDim2.new(1,-32,0,34)
-  search.BackgroundTransparency = 0.5
+  search.BackgroundTransparency = 0.12
   search.BorderSizePixel = 0
   search.ZIndex = Z.Popup+2
   BindTheme(search,"BackgroundColor3","Surface")
   BindTheme(search,"TextColor3","Text")
   search.Parent = popupFrame
   Corner(search,8)
+  Stroke(search, NullUI.Theme.TextDim, 1, 0.82)
+  local searchPad = Instance.new("UIPadding")
+  searchPad.PaddingLeft = UDim.new(0, 34)
+  searchPad.PaddingRight = UDim.new(0, 10)
+  searchPad.Parent = search
+  local searchIcon = Instance.new("ImageLabel")
+  searchIcon.BackgroundTransparency = 1
+  searchIcon.Image = ResolveIcon("Lucide:search")
+  searchIcon.Position = UDim2.fromOffset(27, 57)
+  searchIcon.Size = UDim2.fromOffset(16, 16)
+  searchIcon.ZIndex = Z.Popup + 3
+  BindTheme(searchIcon, "ImageColor3", "TextDim")
+  searchIcon.Parent = popupFrame
 
 		local optionsHolder = Instance.new("ScrollingFrame")
 		optionsHolder.Name = "Options"
@@ -7285,6 +7305,7 @@ function Tab:AddDropdown(opts)
 			optBtn.ZIndex = Z.Popup + 2
 			optBtn.Parent = optionsHolder
 			Corner(optBtn, 8)
+   Stroke(optBtn, NullUI.Theme.TextDim, 1, 0.9)
 
 			local optLabel = Instance.new("TextLabel")
 			optLabel.BackgroundTransparency = 1
@@ -7394,7 +7415,7 @@ function Tab:AddDropdown(opts)
   end)
 		Tween(popupFrame, {
 			Size = UDim2.new(0, popupW, 0, targetHeight),
-			BackgroundTransparency = 0,
+			BackgroundTransparency = 0.06,
 		}, 0.44, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 		Tween(popupStroke, { Transparency = 0.85 }, 0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 
