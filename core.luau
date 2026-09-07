@@ -196,18 +196,20 @@ local function UpdateAllAcrylic()
 	end
 end
 
-local function BindAcrylicCamera(camera)
-	DisconnectCameraSignals()
-	if not camera then return end
+-- Acrylic must follow the final camera pose in the same rendered frame.
+local AcrylicRenderName = "NullUI_Acrylic_" .. tostring(AcrylicControllers)
+RunService:BindToRenderStep(AcrylicRenderName, Enum.RenderPriority.Last.Value + 1, function()
+ if not AcrylicShuttingDown and #AcrylicControllers > 0 then
+  UpdateAllAcrylic()
+ end
+end)
+LibJanitor:Add(function()
+ RunService:UnbindFromRenderStep(AcrylicRenderName)
+end)
 
-	local function connect(property)
-		table.insert(CameraConnections,
-			camera:GetPropertyChangedSignal(property):Connect(function() ScheduleUI(AcrylicControllers, UpdateAllAcrylic) end))
-	end
-	connect("CFrame")
-	connect("ViewportSize")
-	connect("FieldOfView")
-	UpdateAllAcrylic()
+local function BindAcrylicCamera(camera)
+ DisconnectCameraSignals()
+ UpdateAllAcrylic()
 end
 
 local function CreateWindowAcrylic(guiObject)
@@ -305,12 +307,7 @@ local function CreateWindowAcrylic(guiObject)
 		RefreshAcrylicEffect()
 	end
 
-	for _, property in ipairs({ "AbsolutePosition", "AbsoluteSize", "Visible" }) do
-		table.insert(controller.Connections,
-			guiObject:GetPropertyChangedSignal(property):Connect(function()
-				ScheduleUI(controller, function() controller:Update() end)
-			end))
-	end
+
 	table.insert(controller.Connections, guiObject.AncestryChanged:Connect(function()
 		if not guiObject.Parent then controller:Destroy() end
 	end))
@@ -706,7 +703,7 @@ local function AddScrollbar(scroll)
 	scroll.HorizontalScrollBarInset = Enum.ScrollBarInset.None
 end
 
-local function AddContentScrollThumb(scroll, listLayout, thumbParent, janitor, rightInset)
+local function AddContentScrollThumb(scroll, listLayout, thumbParent, janitor, rightInset, thickness)
 	local thumb = Instance.new("Frame")
 	thumb.Name = "ContentScrollThumb"
 	BindTheme(thumb, "BackgroundColor3", "TextDim")
@@ -752,7 +749,7 @@ local function AddContentScrollThumb(scroll, listLayout, thumbParent, janitor, r
 		local topY = (scroll.AbsolutePosition.Y - parentPos.Y) + MARGIN + maxThumbY * ratio
 		local rightX = (scroll.AbsolutePosition.X + scroll.AbsoluteSize.X) - parentPos.X - (rightInset or MARGIN)
 		thumb.Visible = true
-		thumb.Size = UDim2.new(0, 3, thumbH / parentSize.Y, 0)
+		thumb.Size = UDim2.new(0, thickness or 3, thumbH / parentSize.Y, 0)
 		thumb.Position = UDim2.new(rightX / parentSize.X, 0, topY / parentSize.Y, 0)
 	end))
 
@@ -2415,7 +2412,7 @@ function NullUI:CreateWindow(opts)
 
 	AddScrollbar(tabBar)
 	if opts.TabScrollbar ~= false then
-		local thumb = AddContentScrollThumb(tabBar, tabBarLayout, main, jan, -8)
+		local thumb = AddContentScrollThumb(tabBar, tabBarLayout, main, jan, -8, 2)
 		thumb.Name = "SidebarScrollThumb"
 		thumb.Active = true
 		local dragInput, startY, startCanvas
@@ -2738,7 +2735,7 @@ function Window:SetUserInfo(options)
 		self._UserInfoFrame, self._UserAvatar, self._UserName, self._UserHandle = frame, avatar, name, username
 	end
 	local anonymous = settings.NameMode == "anonymous"
-	self._UserName.Text = anonymous and "Anônimo" or (settings.NameMode == "username" and LocalPlayer.Name or LocalPlayer.DisplayName)
+	self._UserName.Text = anonymous and "Anonymous" or (settings.NameMode == "username" and LocalPlayer.Name or LocalPlayer.DisplayName)
 	self._UserHandle.Text = anonymous and "" or ("@" .. LocalPlayer.Name)
 	self._UserHandle.Visible = not anonymous
 	self._UserName.Position = UDim2.fromOffset(48, anonymous and 18 or 9)
@@ -9911,6 +9908,32 @@ do
 	end
 end
 
+local function CollapsibleHeading(header, title, inset, token)
+ header.Text = ""
+ local icon = Instance.new("ImageLabel")
+ icon.Name = "CollapseChevron"
+ icon.BackgroundTransparency = 1
+ icon.Size = UDim2.fromOffset(14, 14)
+ icon.AnchorPoint = Vector2.new(0, 0.5)
+ icon.Position = UDim2.new(0, inset, 0.5, 0)
+ icon.Image = ResolveIcon("Lucide:chevron-down")
+ BindTheme(icon, "ImageColor3", token)
+ icon.Parent = header
+ local label = Instance.new("TextLabel")
+ label.Name = "HeadingText"
+ label.BackgroundTransparency = 1
+ label.Position = UDim2.fromOffset(inset + 22, 0)
+ label.Size = UDim2.new(1, -(inset + 32), 1, 0)
+ label.FontFace = header.FontFace
+ label.TextSize = header.TextSize
+ label.TextXAlignment = Enum.TextXAlignment.Left
+ label.TextTruncate = Enum.TextTruncate.AtEnd
+ label.Text = title
+ BindTheme(label, "TextColor3", token)
+ label.Parent = header
+ return icon
+end
+
 function Window:AddTabGroup(options)
 	options = type(options) == "string" and {Name = options} or (options or {})
 	local group = {Tabs = {}, Collapsed = options.Collapsed == true}
@@ -9945,13 +9968,14 @@ function Window:AddTabGroup(options)
 	list.Padding = UDim.new(0, 4)
 	list.SortOrder = Enum.SortOrder.LayoutOrder
 	list.Parent = body
+	local chevron = CollapsibleHeading(header, options.Name or "Group", 6, "TextDim")
 	function group:SetCollapsed(value)
 		self.Collapsed = value == true
 		body.Visible = not self.Collapsed
 		for _, tab in ipairs(self.Tabs or {}) do
 			if tab._window._currentTab == tab then tab._window._tabIndicator.Visible = not self.Collapsed end
 		end
-		header.Text = (self.Collapsed and "▸  " or "▾  ") .. (options.Name or "Group")
+		chevron.Rotation = self.Collapsed and -90 or 0
 	end
 	function group:Toggle() self:SetCollapsed(not self.Collapsed) end
 	local window = self
@@ -9986,10 +10010,6 @@ function Tab:AddCollapsibleSection(options)
 	header.TextXAlignment = Enum.TextXAlignment.Left
 	BindTheme(header, "TextColor3", "Text")
 	header.Parent = frame
-	local pad = Instance.new("UIPadding")
-	pad.PaddingLeft = UDim.new(0, 12)
-	pad.PaddingRight = UDim.new(0, 12)
-	pad.Parent = header
 	local body = Instance.new("Frame")
 	body.BackgroundTransparency = 1
 	body.Size = UDim2.new(1, 0, 0, 0)
@@ -10009,13 +10029,14 @@ function Tab:AddCollapsibleSection(options)
 	local section = setmetatable({Name = self.Name, Instance = frame, _page = body, _window = self._window,
 		_group = self._group, _janitor = self._janitor, _RootTab = self._RootTab or self,
 		_ParentSection = self._IsSection and self or nil, _IsSection = true}, Tab)
+	local chevron = CollapsibleHeading(header, options.Title or options.Text or "Section", 12, "Text")
 	function section:SetCollapsed(value)
 		self.Collapsed = value == true
 		body.Visible = not self.Collapsed
 		for _, tab in ipairs(self.Tabs or {}) do
 			if tab._window._currentTab == tab then tab._window._tabIndicator.Visible = not self.Collapsed end
 		end
-		header.Text = (self.Collapsed and "▸  " or "▾  ") .. (options.Title or options.Text or "Section")
+		chevron.Rotation = self.Collapsed and -90 or 0
 	end
 	function section:Toggle() self:SetCollapsed(not self.Collapsed) end
 	function section:Expand()
@@ -10057,23 +10078,23 @@ end
 function Window:AddAppearanceTab(options)
 	if self._AppearanceTab then return self._AppearanceTab end
 	options = options or {}
-	local tab = self:AddTab({Name = options.Name or "Aparência", Icon = "palette"})
+	local tab = self:AddTab({Name = options.Name or "Appearance", Icon = "palette"})
 	self._AppearanceTab = tab
-	local themeSection = tab:AddCollapsibleSection({Title = "Tema e cores"})
+	local themeSection = tab:AddCollapsibleSection({Title = "Theme and colors"})
 	local pickers = {}
-	themeSection:AddDropdown({Text = "Tema", Options = {"Dark", "Light", "Midnight", "Forest"}, Default = NullUI._ThemeName or "Dark", Callback = function(name)
+	themeSection:AddDropdown({Text = "Theme", Options = {"Dark", "Light", "Midnight", "Forest"}, Default = NullUI._ThemeName or "Dark", Callback = function(name)
 		NullUI:SetTheme(name)
 		for token, picker in pairs(pickers) do picker:Set(NullUI.Theme[token], true) end
 	end})
-	for _, entry in ipairs({{"Accent", "Destaque"}, {"Background", "Fundo"}, {"Surface", "Superfície"}, {"Text", "Texto"}, {"TextDim", "Texto secundário"}}) do
+	for _, entry in ipairs({{"Accent", "Accent"}, {"Background", "Background"}, {"Surface", "Surface"}, {"Text", "Text"}, {"TextDim", "Secondary text"}}) do
 		local token = entry[1]
 		pickers[token] = themeSection:AddColorPicker({Text = entry[2], Default = NullUI.Theme[token], Callback = function(color) NullUI:SetTheme({[token] = color}) end})
 	end
-	local imageSection = tab:AddCollapsibleSection({Title = "Imagem de fundo"})
-	imageSection:AddTextbox({Text = "Imagem", Description = "ID numérico ou rbxassetid://...", Default = "", Callback = function(value) self:SetBackground({Image = value}) end})
-	imageSection:AddSlider({Text = "Transparência", Min = 0, Max = 100, Default = 70, Callback = function(value) self:SetBackground({Transparency = value / 100}) end})
-	imageSection:AddButton({Text = "Remover imagem", Callback = function() self:SetBackground({Image = ""}) end})
-	local effects = tab:AddCollapsibleSection({Title = "Efeitos"})
+	local imageSection = tab:AddCollapsibleSection({Title = "Background image"})
+	imageSection:AddTextbox({Text = "Image", Description = "Numeric ID or rbxassetid://...", Default = "", Callback = function(value) self:SetBackground({Image = value}) end})
+	imageSection:AddSlider({Text = "Transparency", Min = 0, Max = 100, Default = 70, Callback = function(value) self:SetBackground({Transparency = value / 100}) end})
+	imageSection:AddButton({Text = "Remove image", Callback = function() self:SetBackground({Image = ""}) end})
+	local effects = tab:AddCollapsibleSection({Title = "Effects"})
 	effects:AddToggle({Text = "Blur", Default = NullUI.Config.Blur, Callback = function(enabled) NullUI:SetBlurEnabled(enabled) end})
 	return tab
 end
