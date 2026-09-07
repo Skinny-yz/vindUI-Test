@@ -7157,7 +7157,7 @@ function Tab:AddDropdown(opts)
 		local entry = optionButtons[name]
 		if not entry then return end
 		local sel = isOptionSelected(name)
-		Tween(entry.button, { BackgroundTransparency = sel and 0.9 or 1 }, 0.1)
+		Tween(entry.button, { BackgroundTransparency = sel and 0.78 or 0.96 }, 0.1)
 		Tween(entry.label, { TextColor3 = sel and NullUI.Theme.Text or NullUI.Theme.TextDim }, 0.1)
 		if entry.check then
 			Tween(entry.check, { BackgroundTransparency = sel and 0.05 or 0.9 }, 0.1)
@@ -7176,16 +7176,8 @@ function Tab:AddDropdown(opts)
 		local root = NullUI._Root
 		local mainWindow = self._window and self._window._gui or root
 
-		local rowH, padV = 30, 12
-		local contentH = #options * rowH + math.max(#options - 1, 0) * 2 + padV
-		local targetHeight = math.min(contentH, 220, math.max(1, (ViewportSize().Y - 16) / GetUIScale()))
-
-		local popupW = 140
-		for _, name in ipairs(options) do
-			local w = MeasureText(tostring(name), 13, 1000)
-			popupW = math.max(popupW, w + 66)
-		end
-		popupW = math.min(popupW, ViewportSize().X / GetUIScale() - 24)
+		local rowH = 38
+  local popupW, targetHeight = 440, 330
 
 		popupBackdrop = MakePopupBackdrop(closePopup)
 
@@ -7193,23 +7185,70 @@ function Tab:AddDropdown(opts)
 		popupFrame.Name = "DropdownPopup"
 		popupFrame.Active = true
 		BindTheme(popupFrame, "BackgroundColor3", "Background")
-		popupFrame.BackgroundTransparency = 1
+		popupFrame.BackgroundTransparency = 0
 		popupFrame.BorderSizePixel = 0
 		popupFrame.ZIndex = Z.Popup
 		popupFrame.Size = UDim2.new(0, popupW, 0, 0)
 		popupFrame.Parent = root
 		Corner(popupFrame, 10)
 		local popupStroke = Stroke(popupFrame, Color3.new(1, 1, 1), 1, 0.92)
-		GlassLayer(popupFrame, 10, 0.985)
 
-		local px, py = ComputePopupPosition(mainWindow, card, popupW, targetHeight)
-		popupFrame.Position = UDim2.fromOffset(px, py)
+
+		popupFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+  local fit = Instance.new("UIScale")
+  fit.Parent = popupFrame
+  local function centerDropdown()
+   if not popupFrame then return end
+   local scale, view = GetUIScale(), ViewportSize()
+   fit.Scale = math.min(1, math.max(0.1, (view.X-24)/(popupW*scale)), math.max(0.1, (view.Y-24)/(targetHeight*scale)))
+   local pos, size = mainWindow.AbsolutePosition, mainWindow.AbsoluteSize
+   local hw, hh = popupW*scale*fit.Scale/2, targetHeight*scale*fit.Scale/2
+   popupFrame.Position = UDim2.fromOffset(math.clamp(pos.X+size.X/2,hw+12,math.max(hw+12,view.X-hw-12))/scale, math.clamp(pos.Y+size.Y/2,hh+12,math.max(hh+12,view.Y-hh-12))/scale)
+  end
+  centerDropdown()
+  local title = Instance.new("TextLabel")
+  title.BackgroundTransparency = 1
+  title.Text = opts.Text or "Select an option"
+  title.FontFace = NullUI.Theme.Font
+  title.TextSize = 16
+  title.TextXAlignment = Enum.TextXAlignment.Left
+  title.TextTruncate = Enum.TextTruncate.AtEnd
+  title.Position = UDim2.fromOffset(16, 12)
+  title.Size = UDim2.new(1, -62, 0, 28)
+  title.ZIndex = Z.Popup+2
+  BindTheme(title, "TextColor3", "Text")
+  title.Parent = popupFrame
+  local close = Instance.new("ImageButton")
+  close.BackgroundTransparency = 1
+  close.Image = ResolveIcon("Lucide:x")
+  close.Size = UDim2.fromOffset(22,22)
+  close.Position = UDim2.new(1,-38,0,15)
+  close.ZIndex = Z.Popup+2
+  BindTheme(close, "ImageColor3", "TextDim")
+  close.Parent = popupFrame
+  close.Activated:Connect(closePopup)
+  local search = Instance.new("TextBox")
+  search.ClearTextOnFocus = false
+  search.Text = ""
+  search.PlaceholderText = "Search options..."
+  search.FontFace = NullUI.Theme.FontRegular
+  search.TextSize = 13
+  search.Position = UDim2.fromOffset(16,48)
+  search.Size = UDim2.new(1,-32,0,34)
+  search.BackgroundTransparency = 0.5
+  search.BorderSizePixel = 0
+  search.ZIndex = Z.Popup+2
+  BindTheme(search,"BackgroundColor3","Surface")
+  BindTheme(search,"TextColor3","Text")
+  search.Parent = popupFrame
+  Corner(search,8)
 
 		local optionsHolder = Instance.new("ScrollingFrame")
 		optionsHolder.Name = "Options"
 		optionsHolder.BackgroundTransparency = 1
 		optionsHolder.BorderSizePixel = 0
-		optionsHolder.Size = UDim2.fromScale(1, 1)
+		optionsHolder.Size = UDim2.new(1, -24, 1, -100)
+  optionsHolder.Position = UDim2.fromOffset(12, 90)
 		optionsHolder.ScrollingDirection = Enum.ScrollingDirection.Y
 		optionsHolder.ScrollBarThickness = 0
 		optionsHolder.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -7225,7 +7264,7 @@ function Tab:AddDropdown(opts)
 		optPad.Parent = optionsHolder
 
 		local optLayout = Instance.new("UIListLayout")
-		optLayout.Padding = UDim.new(0, 2)
+		optLayout.Padding = UDim.new(0, 6)
 		optLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		optLayout.Parent = optionsHolder
 
@@ -7238,8 +7277,8 @@ function Tab:AddDropdown(opts)
 			local optBtn = Instance.new("TextButton")
 			optBtn.Text = ""
 			optBtn.AutoButtonColor = false
-			optBtn.BackgroundColor3 = Color3.new(1, 1, 1)
-			optBtn.BackgroundTransparency = isOptionSelected(optionName) and 0.9 or 1
+			BindTheme(optBtn, "BackgroundColor3", "Accent")
+			optBtn.BackgroundTransparency = isOptionSelected(optionName) and 0.78 or 0.96
 			optBtn.BorderSizePixel = 0
 			optBtn.Size = UDim2.new(1, 0, 0, rowH)
 			optBtn.LayoutOrder = i
@@ -7312,7 +7351,7 @@ function Tab:AddDropdown(opts)
 			end)
 			optBtn.MouseLeave:Connect(function()
 				if not isOptionSelected(optionName) then
-					Tween(optBtn, { BackgroundTransparency = 1 }, 0.1)
+					Tween(optBtn, { BackgroundTransparency = 0.96 }, 0.1)
 				end
 			end)
 
@@ -7331,13 +7370,35 @@ function Tab:AddDropdown(opts)
 			end)
 		end
 
+  local empty = Instance.new("TextLabel")
+  empty.BackgroundTransparency = 1
+  empty.Text = "No matching options"
+  empty.FontFace = NullUI.Theme.FontRegular
+  empty.TextSize = 13
+  empty.Position = UDim2.fromOffset(16,104)
+  empty.Size = UDim2.new(1,-32,0,30)
+  empty.ZIndex = Z.Popup+2
+  empty.Visible = #options == 0
+  BindTheme(empty,"TextColor3","TextDim")
+  empty.Parent = popupFrame
+  search:GetPropertyChangedSignal("Text"):Connect(function()
+   local query = string.lower(search.Text)
+   local count = 0
+   for name, entry in pairs(optionButtons) do
+    local visible = string.find(string.lower(tostring(name)), query, 1, true) ~= nil
+    entry.button.Visible = visible
+    if visible then count = count + 1 end
+   end
+   empty.Visible = count == 0
+   optionsHolder.CanvasPosition = Vector2.new(0,0)
+  end)
 		Tween(popupFrame, {
 			Size = UDim2.new(0, popupW, 0, targetHeight),
-			BackgroundTransparency = 0.15,
+			BackgroundTransparency = 0,
 		}, 0.44, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 		Tween(popupStroke, { Transparency = 0.85 }, 0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 
-		followConn = FollowPopup(mainWindow, card, popupW, targetHeight, function() return popupFrame end)
+		followConn = RunService.RenderStepped:Connect(centerDropdown)
 		jan:Add(followConn)
 	end
 
@@ -7722,7 +7783,14 @@ function Tab:AddColorPicker(opts)
 
 		popupBackdrop = MakePopupBackdrop(requestCloseFromBackdrop)
 
-		popupFrame = Instance.new("Frame")
+		popupFrame = Instance.new("ScrollingFrame")
+		popupFrame.CanvasSize = UDim2.fromOffset(0, 0)
+		popupFrame.ScrollingEnabled = false
+		popupFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+		popupFrame.ScrollBarThickness = 3
+		BindTheme(popupFrame, "ScrollBarImageColor3", "TextDim")
+		popupFrame.ScrollBarImageTransparency = 0.35
+		popupFrame.BorderSizePixel = 0
 		popupFrame.Name = "ColorPickerPopup"
 		popupFrame.Active = true
 		BindTheme(popupFrame, "BackgroundColor3", "Background")
@@ -7734,16 +7802,7 @@ function Tab:AddColorPicker(opts)
 		popupFrame.Parent = root
 		Corner(popupFrame, 10)
 		local popupStroke = Stroke(popupFrame, Color3.new(1, 1, 1), 1, 0.92)
-		local solidBackground = Instance.new("Frame")
-  solidBackground.Name = "OpaqueBackground"
-  solidBackground.Size = UDim2.new(1, 28, 1, 28)
-  solidBackground.Position = UDim2.fromOffset(-14, -14)
-  solidBackground.BackgroundTransparency = 0
-  solidBackground.BorderSizePixel = 0
-  solidBackground.ZIndex = Z.Popup
-  BindTheme(solidBackground, "BackgroundColor3", "Background")
-  solidBackground.Parent = popupFrame
-  Corner(solidBackground, 10)
+		GlassLayer(popupFrame, 10, 0.985)
 
 		popupFrame.AnchorPoint = Vector2.new(0.5, 0.5)
   local fit = Instance.new("UIScale")
