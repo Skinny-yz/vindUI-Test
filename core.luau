@@ -4481,8 +4481,8 @@ function Tab:AddSubTab(nameOrOpts)
 
 		self._subTabHolder = Instance.new("ScrollingFrame")
 		self._subTabHolder.Name = "SubTabBar"
-		self._subTabHolder.Size = UDim2.new(1, -12, 0, 40)
-		self._subTabHolder.Position = UDim2.fromOffset(2, 6)
+		self._subTabHolder.Size = UDim2.new(1, -28, 0, 40)
+		self._subTabHolder.Position = UDim2.fromOffset(14, 6)
 		self._subTabHolder.BackgroundTransparency = 1
 		self._subTabHolder.BorderSizePixel = 0
 		self._subTabHolder.ScrollingDirection = Enum.ScrollingDirection.X
@@ -4535,8 +4535,8 @@ function Tab:AddSubTab(nameOrOpts)
 		BindTheme(self._subTabScrollTrack, "BackgroundColor3", "TextDim")
 		self._subTabScrollTrack.BackgroundTransparency = 0.85
 		self._subTabScrollTrack.BorderSizePixel = 0
-		self._subTabScrollTrack.Position = UDim2.new(0, 2, 0, 48)
-		self._subTabScrollTrack.Size = UDim2.new(1, -12, 0, 3)
+		self._subTabScrollTrack.Position = UDim2.new(0, 14, 0, 48)
+		self._subTabScrollTrack.Size = UDim2.new(1, -28, 0, 3)
 		self._subTabScrollTrack.Visible = false
 		self._subTabScrollTrack.ZIndex = Z.Content
 		self._subTabScrollTrack.Parent = page
