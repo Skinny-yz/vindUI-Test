@@ -3416,7 +3416,8 @@ function Window:AddTab(nameOrOpts)
 	page.Name = name .. "Page"
 	page.BackgroundTransparency = 1
 	page.BorderSizePixel = 0
-	page.Size = UDim2.fromScale(1, 1)
+	page.Position = UDim2.fromOffset(6, 2)
+	page.Size = UDim2.new(1, -6, 1, -4)
 	page.ScrollingDirection = Enum.ScrollingDirection.Y
 	page.ScrollBarThickness = 0
 	page.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -3427,7 +3428,7 @@ function Window:AddTab(nameOrOpts)
 	local pagePad = Instance.new("UIPadding")
 	pagePad.Name = "PagePadding"
 	-- Keep strokes inside the scrolling viewport at fractional UI scales.
-	pagePad.PaddingLeft = UDim.new(0, 3)
+	pagePad.PaddingLeft = UDim.new(0, 6)
 	pagePad.PaddingTop = UDim.new(0, 3)
 	pagePad.PaddingRight = UDim.new(0, 12)
 	pagePad.PaddingBottom = UDim.new(0, 6)
@@ -4676,7 +4677,8 @@ function Tab:AddSubTab(nameOrOpts)
 
 	local container = Instance.new("ScrollingFrame")
 	container.Name = title .. "Page"
-	container.Size = UDim2.fromScale(1, 1)
+	container.Position = UDim2.fromOffset(6, 2)
+	container.Size = UDim2.new(1, -6, 1, -4)
 	container.BackgroundTransparency = 1
 	container.BorderSizePixel = 0
 	container.ScrollingDirection = Enum.ScrollingDirection.Y
@@ -4689,7 +4691,7 @@ function Tab:AddSubTab(nameOrOpts)
 	local cpad = Instance.new("UIPadding")
 	cpad.Name = "PagePadding"
 	-- Keep strokes inside the scrolling viewport at fractional UI scales.
-	cpad.PaddingLeft = UDim.new(0, 3)
+	cpad.PaddingLeft = UDim.new(0, 6)
 	cpad.PaddingTop = UDim.new(0, 3)
 	cpad.PaddingRight = UDim.new(0, 12)
 	cpad.PaddingBottom = UDim.new(0, 6)
