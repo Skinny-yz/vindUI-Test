@@ -2489,12 +2489,12 @@ function NullUI:CreateWindow(opts)
 	divider.ZIndex = Z.Content
 	divider.Parent = main
 
-	local contentX = margin + math.clamp(tonumber(opts.TabWidth) or 130, 110, 260) + 20
+	local contentX = margin + math.clamp(tonumber(opts.TabWidth) or 130, 110, 260) + 16
 	local content = Instance.new("Frame")
 	content.Name = "Content"
 	content.BackgroundTransparency = 1
-	content.Position = UDim2.new(0, contentX, 0, 58)
-	content.Size = UDim2.new(1, -contentX - margin, 1, -(58 + margin))
+	content.Position = UDim2.new(0, contentX, 0, 54)
+	content.Size = UDim2.new(1, -contentX - margin + 4, 1, -(54 + margin))
 	content.ZIndex = Z.Content
 	content.Parent = main
 
@@ -2726,10 +2726,10 @@ end
 function Window:SetTabWidth(value)
  self._TabWidth = math.clamp(tonumber(value) or 130, 110, 260)
  local margin = NullUI.Theme.Margin
- local contentX = margin + self._TabWidth + 20
+ local contentX = margin + self._TabWidth + 16
  self._sidebarDivider.Position = UDim2.fromOffset(margin + self._TabWidth + 14, 58)
- self._content.Position = UDim2.fromOffset(contentX, 58)
- self._content.Size = UDim2.new(1, -contentX - margin, 1, -(58 + margin))
+ self._content.Position = UDim2.fromOffset(contentX, 54)
+ self._content.Size = UDim2.new(1, -contentX - margin + 4, 1, -(54 + margin))
  if self._UserInfoFrame then self._UserInfoFrame.Size = UDim2.fromOffset(self._TabWidth, 54) end
  if self._dock then self._dock.Size = UDim2.new(0, self._TabWidth, 0, self._dock.Size.Y.Offset) end
  self:_RefreshFooter()
