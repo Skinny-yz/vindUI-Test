@@ -2489,7 +2489,7 @@ function NullUI:CreateWindow(opts)
 	divider.ZIndex = Z.Content
 	divider.Parent = main
 
-	local contentX = margin + math.clamp(tonumber(opts.TabWidth) or 130, 110, 260) + 16
+	local contentX = margin + math.clamp(tonumber(opts.TabWidth) or 130, 110, 260) + 12
 	local content = Instance.new("Frame")
 	content.Name = "Content"
 	content.BackgroundTransparency = 1
@@ -2726,7 +2726,7 @@ end
 function Window:SetTabWidth(value)
  self._TabWidth = math.clamp(tonumber(value) or 130, 110, 260)
  local margin = NullUI.Theme.Margin
- local contentX = margin + self._TabWidth + 16
+ local contentX = margin + self._TabWidth + 12
  self._sidebarDivider.Position = UDim2.fromOffset(margin + self._TabWidth + 14, 58)
  self._content.Position = UDim2.fromOffset(contentX, 54)
  self._content.Size = UDim2.new(1, -contentX - margin + 4, 1, -(54 + margin))
@@ -4532,58 +4532,10 @@ function Tab:AddSubTab(nameOrOpts)
 		self._subTabBody.ZIndex = Z.Content
 		self._subTabBody.Parent = page
 
-		self._subTabScrollTrack = Instance.new("Frame")
-		self._subTabScrollTrack.Name = "SubTabScrollTrack"
-		BindTheme(self._subTabScrollTrack, "BackgroundColor3", "TextDim")
-		self._subTabScrollTrack.BackgroundTransparency = 0.85
-		self._subTabScrollTrack.BorderSizePixel = 0
-		self._subTabScrollTrack.Position = UDim2.new(0, 8, 0, 48)
-		self._subTabScrollTrack.Size = UDim2.new(1, -20, 0, 3)
-		self._subTabScrollTrack.Visible = false
-		self._subTabScrollTrack.ZIndex = Z.Content
-		self._subTabScrollTrack.Parent = page
-		Corner(self._subTabScrollTrack, 2)
-
-		self._subTabScrollThumb = Instance.new("Frame")
-		self._subTabScrollThumb.Name = "Thumb"
-		BindTheme(self._subTabScrollThumb, "BackgroundColor3", "TextDim")
-		self._subTabScrollThumb.BackgroundTransparency = 0.35
-		self._subTabScrollThumb.BorderSizePixel = 0
-		self._subTabScrollThumb.Size = UDim2.new(0, 40, 1, 0)
-		self._subTabScrollThumb.ZIndex = Z.Content + 1
-		self._subTabScrollThumb.Parent = self._subTabScrollTrack
-		Corner(self._subTabScrollThumb, 2)
-
-		function self._updateSubTabScrollbar()
-			local holder = self._subTabHolder
-			local track = self._subTabScrollTrack
-			if not holder or not track then return end
-			if not self._group or not self._group.Visible then
-				track.Visible = false
-				return
-			end
-			local windowW = holder.AbsoluteWindowSize.X
-			local canvasW = holder.AbsoluteCanvasSize.X
-			local overflow = canvasW - windowW
-			if overflow <= 1 or windowW <= 0 then
-				track.Visible = false
-				return
-			end
-			track.Visible = true
-			local trackW = track.AbsoluteSize.X
-			if trackW <= 0 then return end
-			local thumbW = math.min(trackW, math.max(30, trackW * (windowW / canvasW)))
-			local maxThumbX = trackW - thumbW
-			local ratio = math.clamp(holder.CanvasPosition.X / overflow, 0, 1)
-			self._subTabScrollThumb.Size = UDim2.new(thumbW / trackW, 0, 1, 0)
-			self._subTabScrollThumb.Position = UDim2.new((maxThumbX / trackW) * ratio, 0, 0, 0)
-		end
-
-		jan:Add(ObserveProperties({
-			{self._subTabHolder, "AbsoluteWindowSize", "AbsoluteCanvasSize", "CanvasPosition"},
-			{self._subTabScrollTrack, "AbsoluteSize"},
-			{self._group, "Visible"},
-		}, self._updateSubTabScrollbar))
+		-- Match the compact native scrollbar used by TabBox tabs.
+		self._subTabHolder.ScrollBarThickness = 2
+		self._subTabHolder.ScrollBarImageTransparency = 0
+		BindTheme(self._subTabHolder, "ScrollBarImageColor3", "TextDim")
 
 		self._subTabs = {}
 
@@ -4611,7 +4563,6 @@ function Tab:AddSubTab(nameOrOpts)
 
 		jan:Add(self._subTabHolder:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
 			self._syncSubIndicator(false)
-			self._updateSubTabScrollbar()
 		end))
 	end
 
