@@ -7210,11 +7210,14 @@ function Tab:AddDropdown(opts)
 	local popupOpen = false
 	local popupFrame, popupBackdrop, followConn, scrollConn
 	local optionButtons = {}
+ local popupAcrylic, countLabel
 
 	local function closePopup()
 		if not popupOpen then return end
 		popupOpen = false
 		RegisterPopupClose(closePopup)
+  if popupAcrylic then popupAcrylic:Destroy(); popupAcrylic = nil end
+  countLabel = nil
 		Tween(chevron, { Rotation = 0 }, 0.15)
 
 		if followConn then followConn:Disconnect(); followConn = nil end
@@ -7237,7 +7240,7 @@ function Tab:AddDropdown(opts)
 		local entry = optionButtons[name]
 		if not entry then return end
 		local sel = isOptionSelected(name)
-		Tween(entry.button, { BackgroundTransparency = sel and 0.9 or 1 }, 0.1)
+		Tween(entry.button, { BackgroundTransparency = sel and 0.78 or 0.96 }, 0.1)
 		Tween(entry.label, { TextColor3 = sel and NullUI.Theme.Text or NullUI.Theme.TextDim }, 0.1)
 		if entry.check then
 			Tween(entry.check, { BackgroundTransparency = sel and 0.05 or 0.9 }, 0.1)
@@ -7256,16 +7259,9 @@ function Tab:AddDropdown(opts)
 		local root = NullUI._Root
 		local mainWindow = self._window and self._window._gui or root
 
-		local rowH, padV = 30, 12
-		local contentH = #options * rowH + math.max(#options - 1, 0) * 2 + padV
-		local targetHeight = math.min(contentH, 220, math.max(1, (ViewportSize().Y - 16) / GetUIScale()))
-
-		local popupW = 140
-		for _, name in ipairs(options) do
-			local w = MeasureText(tostring(name), 13, 1000)
-			popupW = math.max(popupW, w + 66)
-		end
-		popupW = math.min(popupW, ViewportSize().X / GetUIScale() - 24)
+		local rowH = 38
+  local popupW = 380
+  local targetHeight = math.clamp(130 + math.max(1, #options) * 44 + (isMulti and 42 or 0), 190, 410)
 
 		popupBackdrop = MakePopupBackdrop(closePopup)
 
@@ -7274,23 +7270,115 @@ function Tab:AddDropdown(opts)
 		popupFrame.Name = "DropdownPopup"
 		popupFrame.Active = true
 		BindTheme(popupFrame, "BackgroundColor3", "Background")
-		popupFrame.BackgroundTransparency = 1
+		popupFrame.BackgroundTransparency = 0.08
 		popupFrame.BorderSizePixel = 0
 		popupFrame.ZIndex = Z.Popup
 		popupFrame.Size = UDim2.new(0, popupW, 0, 0)
 		popupFrame.Parent = root
+  popupAcrylic = CreateWindowAcrylic(popupFrame)
 		Corner(popupFrame, 10)
 		local popupStroke = Stroke(popupFrame, Color3.new(1, 1, 1), 1, 0.92)
-		GlassLayer(popupFrame, 10, 0.985)
 
-		local px, py = ComputePopupPosition(mainWindow, card, popupW, targetHeight)
-		popupFrame.Position = UDim2.fromOffset(px, py)
+
+		popupFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+  local fit = Instance.new("UIScale")
+  fit.Parent = popupFrame
+  local function centerDropdown()
+   if not popupFrame then return end
+   local scale, view = GetUIScale(), ViewportSize()
+   fit.Scale = math.min(1, math.max(0.1, (view.X-24)/(popupW*scale)), math.max(0.1, (view.Y-24)/(targetHeight*scale)))
+   local pos, size = mainWindow.AbsolutePosition, mainWindow.AbsoluteSize
+   local hw, hh = popupW*scale*fit.Scale/2, targetHeight*scale*fit.Scale/2
+   popupFrame.Position = UDim2.fromOffset(math.clamp(pos.X+size.X/2,hw+12,math.max(hw+12,view.X-hw-12))/scale, math.clamp(pos.Y+size.Y/2,hh+12,math.max(hh+12,view.Y-hh-12))/scale)
+  end
+  centerDropdown()
+  local title = Instance.new("TextLabel")
+  title.BackgroundTransparency = 1
+  title.Text = opts.Text or "Select an option"
+  title.FontFace = NullUI.Theme.Font
+  title.TextSize = 16
+  title.TextXAlignment = Enum.TextXAlignment.Left
+  title.TextTruncate = Enum.TextTruncate.AtEnd
+  title.Position = UDim2.fromOffset(16, 12)
+  title.Size = UDim2.new(1, -62, 0, 28)
+  title.ZIndex = Z.Popup+2
+  BindTheme(title, "TextColor3", "Text")
+  title.Parent = popupFrame
+  local close = Instance.new("ImageButton")
+  close.BackgroundTransparency = 1
+  close.Image = ResolveIcon("Lucide:x")
+  close.Size = UDim2.fromOffset(22,22)
+  close.Position = UDim2.new(1,-38,0,15)
+  close.ZIndex = Z.Popup+2
+  BindTheme(close, "ImageColor3", "TextDim")
+  close.Parent = popupFrame
+  close.Activated:Connect(closePopup)
+  local search = Instance.new("TextBox")
+  search.ClearTextOnFocus = false
+  search.Text = ""
+  search.PlaceholderText = "Search options..."
+  search.FontFace = NullUI.Theme.FontRegular
+  search.TextSize = 13
+  search.Position = UDim2.fromOffset(16,72)
+  search.Size = UDim2.new(1,-32,0,34)
+  search.BackgroundTransparency = 0.2
+  search.TextXAlignment = Enum.TextXAlignment.Left
+  search.BorderSizePixel = 0
+  search.ZIndex = Z.Popup+2
+  BindTheme(search,"BackgroundColor3","Surface")
+  BindTheme(search,"TextColor3","Text")
+  search.Parent = popupFrame
+  Corner(search,8)
+  Stroke(search, NullUI.Theme.TextDim, 1, 0.8)
+  local searchPad = Instance.new("UIPadding")
+  searchPad.PaddingLeft = UDim.new(0, 34)
+  searchPad.PaddingRight = UDim.new(0, 10)
+  searchPad.Parent = search
+  local lupa = Instance.new("ImageLabel")
+  lupa.Name = "SearchIcon"
+  lupa.BackgroundTransparency = 1
+  lupa.Image = ResolveIcon("Lucide:search")
+  lupa.Position = UDim2.fromOffset(26,81)
+  lupa.Size = UDim2.fromOffset(16,16)
+  lupa.ZIndex = Z.Popup+3
+  BindTheme(lupa,"ImageColor3","TextDim")
+  lupa.Parent = popupFrame
+  local subtitle = Instance.new("TextLabel")
+  subtitle.BackgroundTransparency = 1
+  subtitle.Text = isMulti and "Choose one or more options" or "Choose an option"
+  subtitle.FontFace = NullUI.Theme.FontRegular
+  subtitle.TextSize = 12
+  subtitle.TextXAlignment = Enum.TextXAlignment.Left
+  subtitle.Position = UDim2.fromOffset(16,40)
+  subtitle.Size = UDim2.new(1,-32,0,20)
+  subtitle.ZIndex = Z.Popup+2
+  BindTheme(subtitle,"TextColor3","TextDim")
+  subtitle.Parent = popupFrame
+  if isMulti then
+   countLabel = subtitle
+   countLabel.Text = tostring(#getSelectedList()) .. " selected"
+   local done = Instance.new("TextButton")
+   done.Text = "Done"
+   done.FontFace = NullUI.Theme.Font
+   done.TextSize = 13
+   done.BackgroundTransparency = 0.88
+   done.BorderSizePixel = 0
+   done.Position = UDim2.new(0,16,1,-44)
+   done.Size = UDim2.new(1,-32,0,30)
+   done.ZIndex = Z.Popup+2
+   BindTheme(done,"BackgroundColor3","Accent")
+   BindTheme(done,"TextColor3","Text")
+   done.Parent = popupFrame
+   Corner(done,8)
+   done.Activated:Connect(closePopup)
+  end
 
 		local optionsHolder = Instance.new("ScrollingFrame")
 		optionsHolder.Name = "Options"
 		optionsHolder.BackgroundTransparency = 1
 		optionsHolder.BorderSizePixel = 0
-		optionsHolder.Size = UDim2.fromScale(1, 1)
+		optionsHolder.Size = UDim2.new(1, -24, 1, -(124 + (isMulti and 42 or 0)))
+  optionsHolder.Position = UDim2.fromOffset(12, 114)
 		optionsHolder.ScrollingDirection = Enum.ScrollingDirection.Y
 		optionsHolder.ScrollBarThickness = 0
 		optionsHolder.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -7306,7 +7394,7 @@ function Tab:AddDropdown(opts)
 		optPad.Parent = optionsHolder
 
 		local optLayout = Instance.new("UIListLayout")
-		optLayout.Padding = UDim.new(0, 2)
+		optLayout.Padding = UDim.new(0, 6)
 		optLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		optLayout.Parent = optionsHolder
 
@@ -7319,14 +7407,15 @@ function Tab:AddDropdown(opts)
 			local optBtn = Instance.new("TextButton")
 			optBtn.Text = ""
 			optBtn.AutoButtonColor = false
-			optBtn.BackgroundColor3 = Color3.new(1, 1, 1)
-			optBtn.BackgroundTransparency = isOptionSelected(optionName) and 0.9 or 1
+			BindTheme(optBtn, "BackgroundColor3", "Accent")
+			optBtn.BackgroundTransparency = isOptionSelected(optionName) and 0.78 or 0.96
 			optBtn.BorderSizePixel = 0
 			optBtn.Size = UDim2.new(1, 0, 0, rowH)
 			optBtn.LayoutOrder = i
 			optBtn.ZIndex = Z.Popup + 2
 			optBtn.Parent = optionsHolder
 			Corner(optBtn, 8)
+   Stroke(optBtn, NullUI.Theme.TextDim, 1, 0.9)
 
 			local optLabel = Instance.new("TextLabel")
 			optLabel.BackgroundTransparency = 1
@@ -7393,7 +7482,7 @@ function Tab:AddDropdown(opts)
 			end)
 			optBtn.MouseLeave:Connect(function()
 				if not isOptionSelected(optionName) then
-					Tween(optBtn, { BackgroundTransparency = 1 }, 0.1)
+					Tween(optBtn, { BackgroundTransparency = 0.96 }, 0.1)
 				end
 			end)
 
@@ -7401,6 +7490,7 @@ function Tab:AddDropdown(opts)
 				if isMulti then
 					selected[optionName] = (not selected[optionName]) or nil
 					refreshOptionVisual(optionName)
+     if countLabel then countLabel.Text = tostring(#getSelectedList()) .. " selected" end
 					valueLabel.Text = formatValue()
 					fireChanged(getSelectedList())
 				else
@@ -7412,13 +7502,35 @@ function Tab:AddDropdown(opts)
 			end)
 		end
 
+  local empty = Instance.new("TextLabel")
+  empty.BackgroundTransparency = 1
+  empty.Text = "No matching options"
+  empty.FontFace = NullUI.Theme.FontRegular
+  empty.TextSize = 13
+  empty.Position = UDim2.fromOffset(16,128)
+  empty.Size = UDim2.new(1,-32,0,30)
+  empty.ZIndex = Z.Popup+2
+  empty.Visible = #options == 0
+  BindTheme(empty,"TextColor3","TextDim")
+  empty.Parent = popupFrame
+  search:GetPropertyChangedSignal("Text"):Connect(function()
+   local query = string.lower(search.Text)
+   local count = 0
+   for name, entry in pairs(optionButtons) do
+    local visible = string.find(string.lower(tostring(name)), query, 1, true) ~= nil
+    entry.button.Visible = visible
+    if visible then count = count + 1 end
+   end
+   empty.Visible = count == 0
+   optionsHolder.CanvasPosition = Vector2.new(0,0)
+  end)
 		Tween(popupFrame, {
 			Size = UDim2.new(0, popupW, 0, targetHeight),
-			BackgroundTransparency = 0.15,
+			BackgroundTransparency = 0.08,
 		}, 0.44, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 		Tween(popupStroke, { Transparency = 0.85 }, 0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 
-		followConn = FollowPopup(mainWindow, card, popupW, targetHeight, function() return popupFrame end)
+		followConn = RunService.RenderStepped:Connect(centerDropdown)
 		jan:Add(followConn)
 	end
 
