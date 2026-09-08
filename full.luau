@@ -4483,8 +4483,8 @@ function Tab:AddSubTab(nameOrOpts)
 
 		self._subTabHolder = Instance.new("ScrollingFrame")
 		self._subTabHolder.Name = "SubTabBar"
-		self._subTabHolder.Size = UDim2.new(1, -28, 0, 40)
-		self._subTabHolder.Position = UDim2.fromOffset(14, 6)
+		self._subTabHolder.Size = UDim2.new(1, -20, 0, 40)
+		self._subTabHolder.Position = UDim2.fromOffset(8, 6)
 		self._subTabHolder.BackgroundTransparency = 1
 		self._subTabHolder.BorderSizePixel = 0
 		self._subTabHolder.ScrollingDirection = Enum.ScrollingDirection.X
@@ -4524,8 +4524,8 @@ function Tab:AddSubTab(nameOrOpts)
 
 		self._subTabBody = Instance.new("Frame")
 		self._subTabBody.Name = "SubTabBody"
-		self._subTabBody.Size = UDim2.new(1, -4, 1, -62)
-		self._subTabBody.Position = UDim2.fromOffset(2, 56)
+		self._subTabBody.Size = UDim2.new(1, 0, 1, -62)
+		self._subTabBody.Position = UDim2.fromOffset(0, 56)
 		self._subTabBody.BackgroundTransparency = 1
 		self._subTabBody.BorderSizePixel = 0
 		self._subTabBody.ClipsDescendants = true
@@ -4537,8 +4537,8 @@ function Tab:AddSubTab(nameOrOpts)
 		BindTheme(self._subTabScrollTrack, "BackgroundColor3", "TextDim")
 		self._subTabScrollTrack.BackgroundTransparency = 0.85
 		self._subTabScrollTrack.BorderSizePixel = 0
-		self._subTabScrollTrack.Position = UDim2.new(0, 14, 0, 48)
-		self._subTabScrollTrack.Size = UDim2.new(1, -28, 0, 3)
+		self._subTabScrollTrack.Position = UDim2.new(0, 8, 0, 48)
+		self._subTabScrollTrack.Size = UDim2.new(1, -20, 0, 3)
 		self._subTabScrollTrack.Visible = false
 		self._subTabScrollTrack.ZIndex = Z.Content
 		self._subTabScrollTrack.Parent = page
@@ -4677,8 +4677,8 @@ function Tab:AddSubTab(nameOrOpts)
 
 	local container = Instance.new("ScrollingFrame")
 	container.Name = title .. "Page"
-	container.Position = UDim2.fromOffset(6, 2)
-	container.Size = UDim2.new(1, -6, 1, -4)
+	container.Position = UDim2.fromOffset(0, 2)
+	container.Size = UDim2.new(1, 0, 1, -4)
 	container.BackgroundTransparency = 1
 	container.BorderSizePixel = 0
 	container.ScrollingDirection = Enum.ScrollingDirection.Y
@@ -4691,7 +4691,7 @@ function Tab:AddSubTab(nameOrOpts)
 	local cpad = Instance.new("UIPadding")
 	cpad.Name = "PagePadding"
 	-- Keep strokes inside the scrolling viewport at fractional UI scales.
-	cpad.PaddingLeft = UDim.new(0, 6)
+	cpad.PaddingLeft = UDim.new(0, 8)
 	cpad.PaddingTop = UDim.new(0, 3)
 	cpad.PaddingRight = UDim.new(0, 12)
 	cpad.PaddingBottom = UDim.new(0, 6)
