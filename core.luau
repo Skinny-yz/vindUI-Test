@@ -3991,9 +3991,9 @@ function Window:SelectTab(nameOrIndex)
 	return nil
 end
 
-function Window:_RegisterSearchable(tabObj, title, instance)
+function Window:_RegisterSearchable(tabObj, title, instance, icon)
 	if not title or title == "" or not instance then return end
-	table.insert(self._searchIndex, { title = title, instance = instance, tabObj = tabObj })
+	table.insert(self._searchIndex, { title = title, instance = instance, tabObj = tabObj, icon = icon })
 end
 
 local function SearchEntryPath(tabObj)
@@ -4071,13 +4071,14 @@ function Window:_OpenSearch()
 	local self_ = self
 	local root = NullUI._Root
 	local panelW = math.min(440, ViewportSize().X / GetUIScale() - 40)
-	local HEADER_H = 50
-	local MAX_RESULTS_H = 280
-	local ROW_H = 40
+	local HEADER_H = 60
+	local MAX_RESULTS_H = math.max(60, math.min(372, ViewportSize().Y / GetUIScale() * 0.7 - HEADER_H - 12))
+	local ROW_H = 36
 
 	local open = true
 	local backdrop, panel, scale
-	local heartbeatConn, textConn, focusConn
+	local heartbeatConn, textConn, focusConn, keyConn
+	local rows, selectedIndex = {}, 1
 	local lastMatches = {}
 
 	local restY
@@ -4086,6 +4087,7 @@ function Window:_OpenSearch()
 		if not open then return end
 		open = false
 		RegisterPopupClose(closeSearch)
+		if keyConn then keyConn:Disconnect(); keyConn = nil end
 		if heartbeatConn then heartbeatConn:Disconnect(); heartbeatConn = nil end
 		if textConn then textConn:Disconnect(); textConn = nil end
 		if focusConn then focusConn:Disconnect(); focusConn = nil end
@@ -4093,7 +4095,7 @@ function Window:_OpenSearch()
 		local b, p = backdrop, panel
 		backdrop, panel = nil, nil
 		if p then
-			Tween(p, { Size = UDim2.new(p.Size.X.Scale, p.Size.X.Offset, 0, 0) }, 0.32,
+			Tween(p, { Position = UDim2.fromOffset(p.Position.X.Offset, p.Position.Y.Offset - 8) }, 0.32,
 				Enum.EasingStyle.Quint, Enum.EasingDirection.In)
 			Tween(p, { GroupTransparency = 1 }, 0.26, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
 		end
@@ -4117,31 +4119,42 @@ function Window:_OpenSearch()
 		local s = GetUIScale()
 		local px, py = math.round(cx / s), math.round(cy / s)
 		restY = py
-		panel.Position = UDim2.fromOffset(px, py - 18)
+		panel.Position = UDim2.fromOffset(px, py - 8)
 	end
 	panel.Size = UDim2.new(0, panelW, 0, HEADER_H)
 	BindTheme(panel, "BackgroundColor3", "Background")
-	panel.BackgroundTransparency = 0.05
+	panel.BackgroundTransparency = 0
 	panel.GroupTransparency = 1
 	panel.BorderSizePixel = 0
 	panel.ClipsDescendants = true
 	panel.ZIndex = Z.Modal
 	panel.Parent = root
-	Corner(panel, 14)
+	Corner(panel, 16)
 	Stroke(panel, Color3.new(1, 1, 1), 1, 0.8)
-	GlassLayer(panel, 14, 0.985)
+	GlassLayer(panel, 16, 0.985)
 
 	scale = Instance.new("UIScale")
-	scale.Scale = 0.94
+	scale.Scale = 0.97
 	scale.Parent = panel
+
+	local inputSurface = Instance.new("Frame")
+	inputSurface.Name = "SearchInputSurface"
+	inputSurface.Position = UDim2.fromOffset(12, 12)
+	inputSurface.Size = UDim2.new(1, -24, 0, 36)
+	inputSurface.BackgroundColor3 = Color3.fromRGB(16, 16, 18)
+	inputSurface.BorderSizePixel = 0
+	inputSurface.ZIndex = Z.Modal + 1
+	inputSurface.Parent = panel
+	Corner(inputSurface, 8)
+	Stroke(inputSurface, Color3.new(1, 1, 1), 1, 0.92)
 
 	local searchIcon = Instance.new("ImageLabel")
 	searchIcon.BackgroundTransparency = 1
 	searchIcon.Image = ResolveIcon("search")
 	BindTheme(searchIcon, "ImageColor3", "TextDim")
-	searchIcon.Size = UDim2.fromOffset(16, 16)
+	searchIcon.Size = UDim2.fromOffset(17, 17)
 	searchIcon.AnchorPoint = Vector2.new(0, 0.5)
-	searchIcon.Position = UDim2.new(0, 16, 0, HEADER_H / 2)
+	searchIcon.Position = UDim2.new(0, 24, 0, 30)
 	searchIcon.ZIndex = Z.Modal + 2
 	searchIcon.Parent = panel
 
@@ -4154,7 +4167,7 @@ function Window:_OpenSearch()
 	closeBtn.BorderSizePixel = 0
 	closeBtn.AnchorPoint = Vector2.new(1, 0.5)
 	closeBtn.Size = UDim2.fromOffset(24, 24)
-	closeBtn.Position = UDim2.new(1, -10, 0, HEADER_H / 2)
+	closeBtn.Position = UDim2.new(1, -20, 0, 30)
 	closeBtn.ZIndex = Z.Modal + 2
 	closeBtn.Parent = panel
 	Corner(closeBtn, 7)
@@ -4187,31 +4200,20 @@ function Window:_OpenSearch()
 	box.Text = ""
 	BindTheme(box, "TextColor3", "Text")
 	box.PlaceholderColor3 = NullUI.Theme.TextDim
-	box.TextSize = 15
+	box.TextSize = 14
 	box.ClearTextOnFocus = false
 	box.TextXAlignment = Enum.TextXAlignment.Left
-	box.Position = UDim2.new(0, 40, 0, 0)
-	box.Size = UDim2.new(1, -78, 0, HEADER_H)
+	box.Position = UDim2.new(0, 48, 0, 12)
+	box.Size = UDim2.new(1, -98, 0, 36)
 	box.ZIndex = Z.Modal + 2
 	box.Parent = panel
-
-	local divider = Instance.new("Frame")
-	divider.Name = "Divider"
-	divider.BackgroundColor3 = Color3.new(1, 1, 1)
-	divider.BackgroundTransparency = 0.92
-	divider.BorderSizePixel = 0
-	divider.Position = UDim2.new(0, 0, 0, HEADER_H)
-	divider.Size = UDim2.new(1, 0, 0, 1)
-	divider.Visible = false
-	divider.ZIndex = Z.Modal + 1
-	divider.Parent = panel
 
 	local resultsHolder = Instance.new("ScrollingFrame")
 	resultsHolder.Name = "Results"
 	resultsHolder.BackgroundTransparency = 1
 	resultsHolder.BorderSizePixel = 0
-	resultsHolder.Position = UDim2.new(0, 0, 0, HEADER_H + 1)
-	resultsHolder.Size = UDim2.new(1, 0, 0, 0)
+	resultsHolder.Position = UDim2.new(0, 12, 0, HEADER_H)
+	resultsHolder.Size = UDim2.new(1, -24, 0, 0)
 	resultsHolder.Visible = false
 	resultsHolder.ScrollingDirection = Enum.ScrollingDirection.Y
 	resultsHolder.ScrollBarThickness = 0
@@ -4221,10 +4223,10 @@ function Window:_OpenSearch()
 	resultsHolder.Parent = panel
 
 	local resultsPad = Instance.new("UIPadding")
-	resultsPad.PaddingTop = UDim.new(0, 6)
-	resultsPad.PaddingBottom = UDim.new(0, 6)
-	resultsPad.PaddingLeft = UDim.new(0, 6)
-	resultsPad.PaddingRight = UDim.new(0, 16)
+	resultsPad.PaddingTop = UDim.new(0, 0)
+	resultsPad.PaddingBottom = UDim.new(0, 0)
+	resultsPad.PaddingLeft = UDim.new(0, 0)
+	resultsPad.PaddingRight = UDim.new(0, 10)
 	resultsPad.Parent = resultsHolder
 
 	local resultsLayout = Instance.new("UIListLayout")
@@ -4235,7 +4237,7 @@ function Window:_OpenSearch()
 	AddScrollbar(resultsHolder)
 	AddContentScrollThumb(resultsHolder, resultsLayout, panel, {
 		Add = function(_, conn) heartbeatConn = conn end,
-	})
+	}, 2, 3)
 
 	local emptyLabel = Instance.new("TextLabel")
 	emptyLabel.BackgroundTransparency = 1
@@ -4254,29 +4256,70 @@ function Window:_OpenSearch()
 		self_:_JumpToSearchable(entry)
 	end
 
+	local function selectRow(index, scrollIntoView)
+		selectedIndex = math.clamp(index, 1, math.max(1, #rows))
+		for i, row in ipairs(rows) do
+			row.BackgroundTransparency = i == selectedIndex and 0.91 or 1
+		end
+		local row = rows[selectedIndex]
+		if scrollIntoView and row then
+			local top = row.AbsolutePosition.Y - resultsHolder.AbsolutePosition.Y + resultsHolder.CanvasPosition.Y
+			local bottom = top + ROW_H
+			local y = resultsHolder.CanvasPosition.Y
+			if top < y then y = top elseif bottom > y + resultsHolder.AbsoluteSize.Y then y = bottom - resultsHolder.AbsoluteSize.Y end
+			resultsHolder.CanvasPosition = Vector2.new(0, math.max(0, y))
+		end
+	end
+
 	local function rebuild(query)
 		for _, child in ipairs(resultsHolder:GetChildren()) do
-			if child:IsA("TextButton") then child:Destroy() end
+			if child:IsA("TextButton") or child:IsA("TextLabel") then child:Destroy() end
 		end
 
 		local q = query:lower():match("^%s*(.-)%s*$")
-		local matches = {}
+		local matches, groups, groupOrder = {}, {}, {}
+		rows = {}
+		resultsHolder.CanvasPosition = Vector2.new(0, 0)
 		for _, entry in ipairs(self_._searchIndex) do
 			if entry.instance and entry.instance.Parent then
 				if q == "" or entry.title:lower():find(q, 1, true) then
-					table.insert(matches, entry)
-					if #matches >= 15 then break end
+					local group = SearchEntryPath(entry.tabObj)
+					if not groups[group] then groups[group] = {}; table.insert(groupOrder, group) end
+					table.insert(groups[group], entry)
 				end
 			end
 		end
+		for _, group in ipairs(groupOrder) do
+			for _, entry in ipairs(groups[group]) do table.insert(matches, entry) end
+		end
 		lastMatches = matches
 
-		local showEmpty = (#matches == 0 and q ~= "")
+		local showEmpty = (#matches == 0)
 		emptyLabel.Visible = showEmpty
 		resultsHolder.Visible = (#matches > 0)
-		divider.Visible = (#matches > 0) or showEmpty
 
+		local lastGroup, order = nil, 0
 		for i, entry in ipairs(matches) do
+			local group = SearchEntryPath(entry.tabObj)
+			if group ~= lastGroup then
+				lastGroup = group
+				order = order + 1
+				local heading = Instance.new("TextLabel")
+				heading.Name = "GroupHeading"
+				heading.Text = group
+				heading.FontFace = NullUI.Theme.FontRegular
+				BindTheme(heading, "TextColor3", "TextDim")
+				heading.TextTransparency = 0.28
+				heading.TextSize = 11
+				heading.TextXAlignment = Enum.TextXAlignment.Left
+				heading.BackgroundTransparency = 1
+				heading.Size = UDim2.new(1, -8, 0, 24)
+				heading.LayoutOrder = order
+				heading.ZIndex = Z.Modal + 2
+				heading.Parent = resultsHolder
+				local pad = Instance.new("UIPadding"); pad.PaddingLeft = UDim.new(0, 8); pad.Parent = heading
+			end
+			order = order + 1
 			local row = Instance.new("TextButton")
 			row.Text = ""
 			row.AutoButtonColor = false
@@ -4284,58 +4327,59 @@ function Window:_OpenSearch()
 			row.BackgroundTransparency = 1
 			row.BorderSizePixel = 0
 			row.Size = UDim2.new(1, 0, 0, ROW_H)
-			row.LayoutOrder = i
+			row.LayoutOrder = order
+			row.Name = "SearchResult"
+			table.insert(rows, row)
 			row.ZIndex = Z.Modal + 2
 			row.Parent = resultsHolder
 			Corner(row, 8)
 
 			local titleLbl = Instance.new("TextLabel")
 			titleLbl.BackgroundTransparency = 1
-			titleLbl.FontFace = NullUI.Theme.Font
+			titleLbl.FontFace = NullUI.Theme.FontRegular
 			titleLbl.Text = entry.title
 			BindTheme(titleLbl, "TextColor3", "Text")
 			titleLbl.TextSize = 13
 			titleLbl.TextXAlignment = Enum.TextXAlignment.Left
 			titleLbl.TextTruncate = Enum.TextTruncate.AtEnd
-			titleLbl.Position = UDim2.fromOffset(12, 5)
-			titleLbl.Size = UDim2.new(1, -24, 0, 16)
+			titleLbl.Position = UDim2.fromOffset(35, 0)
+			titleLbl.Size = UDim2.new(1, -43, 1, 0)
 			titleLbl.ZIndex = Z.Modal + 3
 			titleLbl.Parent = row
 
-			local pathLbl = Instance.new("TextLabel")
-			pathLbl.BackgroundTransparency = 1
-			pathLbl.FontFace = NullUI.Theme.FontRegular
-			pathLbl.Text = SearchEntryPath(entry.tabObj)
-			BindTheme(pathLbl, "TextColor3", "TextDim")
-			pathLbl.TextSize = 11
-			pathLbl.TextXAlignment = Enum.TextXAlignment.Left
-			pathLbl.TextTruncate = Enum.TextTruncate.AtEnd
-			pathLbl.Position = UDim2.fromOffset(12, 21)
-			pathLbl.Size = UDim2.new(1, -24, 0, 12)
-			pathLbl.ZIndex = Z.Modal + 3
-			pathLbl.Parent = row
+			local icon = Instance.new("ImageLabel")
+			icon.Name = "ResultIcon"
+			icon.BackgroundTransparency = 1
+			icon.Image = ResolveIcon(entry.icon or "circle")
+			BindTheme(icon, "ImageColor3", "TextDim")
+			icon.Size = UDim2.fromOffset(17, 17)
+			icon.AnchorPoint = Vector2.new(0, 0.5)
+			icon.Position = UDim2.new(0, 8, 0.5, 0)
+			icon.ZIndex = Z.Modal + 3
+			icon.Parent = row
 
 			row.MouseEnter:Connect(function()
-				Tween(row, { BackgroundTransparency = 0.92 }, 0.1)
+				selectRow(i, false)
 			end)
 			row.MouseLeave:Connect(function()
-				Tween(row, { BackgroundTransparency = 1 }, 0.1)
+				row.BackgroundTransparency = i == selectedIndex and 0.91 or 1
 			end)
 			row.MouseButton1Click:Connect(function()
 				activate(entry)
 			end)
 		end
 
-		local resultsH = math.min(#matches * (ROW_H + 2), MAX_RESULTS_H)
+		selectRow(1, false)
+		local resultsH = math.min(#matches * (ROW_H + 2) + #groupOrder * 26, MAX_RESULTS_H)
 
 		local extraH = 0
 		if resultsH > 0 then
-			extraH = resultsH + 1
+			extraH = resultsH + 12
 		elseif showEmpty then
-			extraH = 36
+			extraH = 60
 		end
 
-		Tween(resultsHolder, { Size = UDim2.new(1, 0, 0, resultsH) }, 0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut)
+		Tween(resultsHolder, { Size = UDim2.new(1, -24, 0, resultsH) }, 0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut)
 		Tween(panel, { Size = UDim2.new(0, panelW, 0, HEADER_H + extraH) }, 0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut)
 	end
 
@@ -4345,21 +4389,29 @@ function Window:_OpenSearch()
 		local myToken = rebuildToken
 		local text = box.Text
 		task.delay(0.12, function()
-			if rebuildToken == myToken and box.Parent then
+			if open and rebuildToken == myToken and box.Parent then
 				rebuild(text)
 			end
 		end)
 	end)
 
 	focusConn = box.FocusLost:Connect(function(enterPressed)
-		if enterPressed and lastMatches[1] then
-			activate(lastMatches[1])
+		if enterPressed and lastMatches[selectedIndex] then
+			activate(lastMatches[selectedIndex])
+		end
+	end)
+
+	keyConn = UserInputService.InputBegan:Connect(function(input)
+		if not open then return end
+		if input.KeyCode == Enum.KeyCode.Escape then closeSearch()
+		elseif input.KeyCode == Enum.KeyCode.Down then selectRow(selectedIndex + 1, true)
+		elseif input.KeyCode == Enum.KeyCode.Up then selectRow(selectedIndex - 1, true)
 		end
 	end)
 
 	rebuild("")
 
-	scale.Scale = 0.94
+	scale.Scale = 0.97
 	Tween(panel, {
 		GroupTransparency = 0,
 		Position = UDim2.fromOffset(panel.Position.X.Offset, restY),
@@ -5354,7 +5406,7 @@ function Tab:AddRating(opts)
 		titleLabel.ZIndex = Z.Content + 1
 		titleLabel.Parent = card
 
-		self._window:_RegisterSearchable(self, opts.Title, card)
+		self._window:_RegisterSearchable(self, opts.Title, card, opts.Icon or "star")
 	end
 
 	local starBar = BuildStarRow(card, 2, maxStars, starColor, 20, opts.Default)
@@ -5398,7 +5450,7 @@ function Tab:AddButton(opts)
 
 	local textX = AddLeadingIcon(card, opts.Icon, height)
 	AddTitleDesc(card, textX, 44, opts.Text or "Button", opts.Description, height)
-	self._window:_RegisterSearchable(self, opts.Text or "Button", card)
+	self._window:_RegisterSearchable(self, opts.Text or "Button", card, opts.Icon or "mouse-pointer-2")
 
 	local chev = Instance.new("ImageLabel")
 	chev.BackgroundTransparency = 1
@@ -5514,7 +5566,7 @@ function Tab:AddCard(opts)
 
 	local rightReserve = opts.Callback and 44 or 14
 	AddTitleDesc(card, textX, rightReserve, opts.Title or "Card", opts.Description, topHeight, extraBottom)
-	self._window:_RegisterSearchable(self, opts.Title or "Card", card)
+	self._window:_RegisterSearchable(self, opts.Title or "Card", card, opts.Icon or "layout-panel-top")
 
 	if opts.Callback then
 		local chev = Instance.new("ImageLabel")
@@ -5701,7 +5753,7 @@ function Tab:AddChangelogEntry(opts)
 
 	local card = BaseCard(self._page, height)
 	card.AutomaticSize = Enum.AutomaticSize.Y
-	self._window:_RegisterSearchable(self, version, card)
+	self._window:_RegisterSearchable(self, version, card, opts.Icon or "history")
 
 	local pad = Instance.new("UIPadding")
 	pad.PaddingTop = UDim.new(0, PAD)
@@ -5867,7 +5919,7 @@ function Tab:AddLoadoutGroup(opts)
 	local height = PAD * 2 + HEADER_H + GAP1 + ICON_SIZE + GAP2 + BUTTON_H
 
 	local card = BaseCard(self._page, height)
-	self._window:_RegisterSearchable(self, title, card)
+	self._window:_RegisterSearchable(self, title, card, opts.Icon or "layers")
 
 	local pad = Instance.new("UIPadding")
 	pad.PaddingTop = UDim.new(0, PAD)
@@ -6001,7 +6053,7 @@ function Tab:AddInfoGrid(opts)
 	local height = PAD * 2 + HEADER_H + (rows > 0 and (10 + gridH) or 0)
 
 	local card = BaseCard(self._page, height)
-	self._window:_RegisterSearchable(self, title, card)
+	self._window:_RegisterSearchable(self, title, card, opts.Icon or "layout-grid")
 
 	local leftInset = 0
 	if color then
@@ -6263,7 +6315,7 @@ function Tab:AddLeaderboard(opts)
 	container.Parent = self._page
 	Corner(container, NullUI.Theme.CornerRadiusSm)
 	Stroke(container, Color3.new(1, 1, 1), 1, 0.92)
-	self._window:_RegisterSearchable(self, title, container)
+	self._window:_RegisterSearchable(self, title, container, opts.Icon or "trophy")
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.BackgroundTransparency = 1
@@ -6603,7 +6655,7 @@ function Tab:AddGradientCard(opts)
 	gradient.Rotation = 100
 	gradient.Parent = card
 
-	self._window:_RegisterSearchable(self, title, card)
+	self._window:_RegisterSearchable(self, title, card, opts.Icon or "palette")
 
 	local PAD = 14
 	local rightReserve = opts.Callback and 32 or PAD
@@ -6696,7 +6748,7 @@ function Tab:AddToggle(opts)
 
 	local textX = AddLeadingIcon(card, opts.Icon, height)
 	AddTitleDesc(card, textX, 66, opts.Text or "Toggle", opts.Description, height)
-	self._window:_RegisterSearchable(self, opts.Text or "Toggle", card)
+	self._window:_RegisterSearchable(self, opts.Text or "Toggle", card, opts.Icon or "toggle-left")
 
 	local switchBg = Instance.new("Frame")
 	switchBg.AnchorPoint = Vector2.new(1, 0.5)
@@ -6864,7 +6916,7 @@ function Tab:AddSlider(opts)
 	label.Size = UDim2.new(1, -(textX + 76), 0, 18)
 	label.ZIndex = Z.Content + 1
 	label.Parent = card
-	self._window:_RegisterSearchable(self, opts.Text or "Slider", card)
+	self._window:_RegisterSearchable(self, opts.Text or "Slider", card, opts.Icon or "sliders-horizontal")
 
 	local descLabel
 	if hasDesc then
@@ -7171,7 +7223,7 @@ function Tab:AddDropdown(opts)
 	local textX = AddLeadingIcon(card, opts.Icon, height)
 
 	AddTitleDesc(card, textX, 166, opts.Text or "Dropdown", opts.Description, height)
-	self._window:_RegisterSearchable(self, opts.Text or "Dropdown", card)
+	self._window:_RegisterSearchable(self, opts.Text or "Dropdown", card, opts.Icon or "chevrons-up-down")
 
 	local valueLabel = Instance.new("TextLabel")
 	valueLabel.BackgroundTransparency = 1
@@ -7587,7 +7639,7 @@ function Tab:AddTextbox(opts)
 	local titleReserve = pillMinW + 26
 
 	local _, _, refreshTextLayout = AddTitleDesc(card, textX, function() return titleReserve end, opts.Text or "Textbox", opts.Description, height)
-	self._window:_RegisterSearchable(self, opts.Text or "Textbox", card)
+	self._window:_RegisterSearchable(self, opts.Text or "Textbox", card, opts.Icon or "text-cursor-input")
 
 	local pill, pillStroke = CreateInputPill(card, pillMinW)
 
@@ -7743,7 +7795,7 @@ function Tab:AddColorPicker(opts)
 	local card = BaseCard(self._page, height)
 	local textX = AddLeadingIcon(card, opts.Icon, height)
 	AddTitleDesc(card, textX, 52, opts.Text or "Color", opts.Description, height)
-	self._window:_RegisterSearchable(self, opts.Text or "Color", card)
+	self._window:_RegisterSearchable(self, opts.Text or "Color", card, opts.Icon or "palette")
 
 	local color = opts.Default or Color3.fromRGB(255, 255, 255)
 	local hue, sat, val = Color3.toHSV(color)
@@ -8239,7 +8291,7 @@ function Tab:AddKeybind(opts)
 	local card = BaseCard(self._page, height)
 	local textX = AddLeadingIcon(card, opts.Icon, height)
 	AddTitleDesc(card, textX, 128, opts.Text or "Keybind", opts.Description, height)
-	self._window:_RegisterSearchable(self, opts.Text or "Keybind", card)
+	self._window:_RegisterSearchable(self, opts.Text or "Keybind", card, opts.Icon or "keyboard")
 
 	local currentKey = opts.Default
 
@@ -8712,7 +8764,7 @@ function Tab:AddTable(opts)
 	container.Parent = self._page
 	Corner(container, NullUI.Theme.CornerRadiusSm)
 	Stroke(container, Color3.new(1, 1, 1), 1, 0.92)
-	self._window:_RegisterSearchable(self, title, container)
+	self._window:_RegisterSearchable(self, title, container, opts.Icon or "table")
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.BackgroundTransparency = 1
@@ -8991,7 +9043,7 @@ function Tab:AddCardGrid(opts)
 	outer.Parent = self._page
 	Corner(outer, NullUI.Theme.CornerRadiusSm)
 	Stroke(outer, Color3.new(1, 1, 1), 1, 0.95)
-	self._window:_RegisterSearchable(self, opts.Title or "Cards", outer)
+	self._window:_RegisterSearchable(self, opts.Title or "Cards", outer, opts.Icon or "layout-grid")
 
 	local content = Instance.new("Frame")
 	content.Name = "Content"
