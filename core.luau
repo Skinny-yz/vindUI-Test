@@ -2487,7 +2487,7 @@ function NullUI:CreateWindow(opts)
 	divider.ZIndex = Z.Content
 	divider.Parent = main
 
-	local contentX = margin + math.clamp(tonumber(opts.TabWidth) or 130, 110, 260) + 14 + 16
+	local contentX = margin + math.clamp(tonumber(opts.TabWidth) or 130, 110, 260) + 20
 	local content = Instance.new("Frame")
 	content.Name = "Content"
 	content.BackgroundTransparency = 1
@@ -2724,7 +2724,7 @@ end
 function Window:SetTabWidth(value)
  self._TabWidth = math.clamp(tonumber(value) or 130, 110, 260)
  local margin = NullUI.Theme.Margin
- local contentX = margin + self._TabWidth + 30
+ local contentX = margin + self._TabWidth + 20
  self._sidebarDivider.Position = UDim2.fromOffset(margin + self._TabWidth + 14, 58)
  self._content.Position = UDim2.fromOffset(contentX, 58)
  self._content.Size = UDim2.new(1, -contentX - margin, 1, -(58 + margin))
