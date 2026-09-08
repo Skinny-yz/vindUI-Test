@@ -7268,7 +7268,7 @@ function Tab:AddDropdown(opts)
 		popupFrame.Name = "DropdownPopup"
 		popupFrame.Active = true
 		BindTheme(popupFrame, "BackgroundColor3", "Background")
-		popupFrame.BackgroundTransparency = 0.02
+		popupFrame.BackgroundTransparency = 0
 		popupFrame.BorderSizePixel = 0
 		popupFrame.ZIndex = Z.Popup
 		popupFrame.Size = UDim2.new(0, popupW, 0, 0)
@@ -7375,7 +7375,7 @@ function Tab:AddDropdown(opts)
 		optionsHolder.Name = "Options"
 		optionsHolder.BackgroundTransparency = 1
 		optionsHolder.BorderSizePixel = 0
-		optionsHolder.Size = UDim2.new(1, -32, 1, -(124 + (isMulti and 42 or 0)))
+		optionsHolder.Size = UDim2.new(1, -24, 1, -(124 + (isMulti and 42 or 0)))
   optionsHolder.Position = UDim2.fromOffset(16, 114)
 		optionsHolder.ScrollingDirection = Enum.ScrollingDirection.Y
 		optionsHolder.ScrollBarThickness = 0
@@ -7388,7 +7388,7 @@ function Tab:AddDropdown(opts)
 		optPad.PaddingTop = UDim.new(0, 6)
 		optPad.PaddingBottom = UDim.new(0, 6)
 		optPad.PaddingLeft = UDim.new(0, 0)
-		optPad.PaddingRight = UDim.new(0, 0)
+		optPad.PaddingRight = UDim.new(0, 8)
 		optPad.Parent = optionsHolder
 
 		local optLayout = Instance.new("UIListLayout")
@@ -7399,7 +7399,7 @@ function Tab:AddDropdown(opts)
 		AddScrollbar(optionsHolder)
 		AddContentScrollThumb(optionsHolder, optLayout, popupFrame, {
 			Add = function(_, conn) scrollConn = conn end,
-		}, -8, 2)
+		}, 3, 2)
 
 		for i, optionName in ipairs(options) do
 			local optBtn = Instance.new("TextButton")
@@ -7408,7 +7408,7 @@ function Tab:AddDropdown(opts)
 			BindTheme(optBtn, "BackgroundColor3", "Accent")
 			optBtn.BackgroundTransparency = isOptionSelected(optionName) and 0.78 or 0.96
 			optBtn.BorderSizePixel = 0
-			optBtn.Size = UDim2.new(1, 0, 0, rowH)
+			optBtn.Size = UDim2.fromOffset(popupW - 32, rowH)
 			optBtn.LayoutOrder = i
 			optBtn.ZIndex = Z.Popup + 2
 			optBtn.Parent = optionsHolder
@@ -7524,7 +7524,7 @@ function Tab:AddDropdown(opts)
   end)
 		Tween(popupFrame, {
 			Size = UDim2.new(0, popupW, 0, targetHeight),
-			BackgroundTransparency = 0.02,
+			BackgroundTransparency = 0,
 		}, 0.44, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 		Tween(popupStroke, { Transparency = 0.85 }, 0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 
