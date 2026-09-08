@@ -3426,6 +3426,9 @@ function Window:AddTab(nameOrOpts)
 
 	local pagePad = Instance.new("UIPadding")
 	pagePad.Name = "PagePadding"
+	-- Keep strokes inside the scrolling viewport at fractional UI scales.
+	pagePad.PaddingLeft = UDim.new(0, 3)
+	pagePad.PaddingTop = UDim.new(0, 3)
 	pagePad.PaddingRight = UDim.new(0, 12)
 	pagePad.PaddingBottom = UDim.new(0, 6)
 	pagePad.Parent = page
@@ -4685,6 +4688,9 @@ function Tab:AddSubTab(nameOrOpts)
 
 	local cpad = Instance.new("UIPadding")
 	cpad.Name = "PagePadding"
+	-- Keep strokes inside the scrolling viewport at fractional UI scales.
+	cpad.PaddingLeft = UDim.new(0, 3)
+	cpad.PaddingTop = UDim.new(0, 3)
 	cpad.PaddingRight = UDim.new(0, 12)
 	cpad.PaddingBottom = UDim.new(0, 6)
 	cpad.Parent = container
@@ -10695,10 +10701,10 @@ function Tab:AddTabBox(options)
   body.Visible = false
   body.Parent = frame
   local padding = Instance.new("UIPadding")
-  padding.PaddingLeft = UDim.new(0, 0)
-  padding.PaddingRight = UDim.new(0, 0)
+  padding.PaddingLeft = UDim.new(0, 3)
+  padding.PaddingRight = UDim.new(0, 3)
   padding.PaddingTop = UDim.new(0, 12)
-  padding.PaddingBottom = UDim.new(0, 0)
+  padding.PaddingBottom = UDim.new(0, 3)
   padding.Parent = body
   local list = Instance.new("UIListLayout")
   list.Padding = UDim.new(0, 12)
