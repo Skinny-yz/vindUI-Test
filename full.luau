@@ -4280,6 +4280,7 @@ function Window:_OpenSearch()
 
 		local q = query:lower():match("^%s*(.-)%s*$")
 		local matches, groups, groupOrder = {}, {}, {}
+		local matchCount = 0
 		rows = {}
 		resultsHolder.CanvasPosition = Vector2.new(0, 0)
 		for _, entry in ipairs(self_._searchIndex) do
@@ -4288,6 +4289,8 @@ function Window:_OpenSearch()
 					local group = SearchEntryPath(entry.tabObj)
 					if not groups[group] then groups[group] = {}; table.insert(groupOrder, group) end
 					table.insert(groups[group], entry)
+					matchCount = matchCount + 1
+					if matchCount >= 15 then break end
 				end
 			end
 		end
@@ -4336,6 +4339,9 @@ function Window:_OpenSearch()
 			row.Parent = resultsHolder
 			Corner(row, 8)
 
+			local iconAsset = entry.icon and ResolveIcon(entry.icon) or ""
+			local hasIcon = iconAsset ~= nil and iconAsset ~= "" and iconAsset ~= false
+			local textInset = hasIcon and 35 or 8
 			local titleLbl = Instance.new("TextLabel")
 			titleLbl.BackgroundTransparency = 1
 			titleLbl.FontFace = NullUI.Theme.FontRegular
@@ -4344,15 +4350,16 @@ function Window:_OpenSearch()
 			titleLbl.TextSize = 13
 			titleLbl.TextXAlignment = Enum.TextXAlignment.Left
 			titleLbl.TextTruncate = Enum.TextTruncate.AtEnd
-			titleLbl.Position = UDim2.fromOffset(35, 0)
-			titleLbl.Size = UDim2.new(1, -43, 1, 0)
+			titleLbl.Position = UDim2.fromOffset(textInset, 0)
+			titleLbl.Size = UDim2.new(1, -(textInset + 8), 1, 0)
 			titleLbl.ZIndex = Z.Modal + 3
 			titleLbl.Parent = row
 
 			local icon = Instance.new("ImageLabel")
 			icon.Name = "ResultIcon"
 			icon.BackgroundTransparency = 1
-			icon.Image = ResolveIcon(entry.icon or "circle")
+			icon.Image = iconAsset or ""
+			icon.Visible = hasIcon
 			BindTheme(icon, "ImageColor3", "TextDim")
 			icon.Size = UDim2.fromOffset(17, 17)
 			icon.AnchorPoint = Vector2.new(0, 0.5)
@@ -5408,7 +5415,7 @@ function Tab:AddRating(opts)
 		titleLabel.ZIndex = Z.Content + 1
 		titleLabel.Parent = card
 
-		self._window:_RegisterSearchable(self, opts.Title, card, opts.Icon or "star")
+		self._window:_RegisterSearchable(self, opts.Title, card, opts.Icon)
 	end
 
 	local starBar = BuildStarRow(card, 2, maxStars, starColor, 20, opts.Default)
@@ -5452,7 +5459,7 @@ function Tab:AddButton(opts)
 
 	local textX = AddLeadingIcon(card, opts.Icon, height)
 	AddTitleDesc(card, textX, 44, opts.Text or "Button", opts.Description, height)
-	self._window:_RegisterSearchable(self, opts.Text or "Button", card, opts.Icon or "mouse-pointer-2")
+	self._window:_RegisterSearchable(self, opts.Text or "Button", card, opts.Icon)
 
 	local chev = Instance.new("ImageLabel")
 	chev.BackgroundTransparency = 1
@@ -5568,7 +5575,7 @@ function Tab:AddCard(opts)
 
 	local rightReserve = opts.Callback and 44 or 14
 	AddTitleDesc(card, textX, rightReserve, opts.Title or "Card", opts.Description, topHeight, extraBottom)
-	self._window:_RegisterSearchable(self, opts.Title or "Card", card, opts.Icon or "layout-panel-top")
+	self._window:_RegisterSearchable(self, opts.Title or "Card", card, opts.Icon)
 
 	if opts.Callback then
 		local chev = Instance.new("ImageLabel")
@@ -5755,7 +5762,7 @@ function Tab:AddChangelogEntry(opts)
 
 	local card = BaseCard(self._page, height)
 	card.AutomaticSize = Enum.AutomaticSize.Y
-	self._window:_RegisterSearchable(self, version, card, opts.Icon or "history")
+	self._window:_RegisterSearchable(self, version, card, opts.Icon)
 
 	local pad = Instance.new("UIPadding")
 	pad.PaddingTop = UDim.new(0, PAD)
@@ -5921,7 +5928,7 @@ function Tab:AddLoadoutGroup(opts)
 	local height = PAD * 2 + HEADER_H + GAP1 + ICON_SIZE + GAP2 + BUTTON_H
 
 	local card = BaseCard(self._page, height)
-	self._window:_RegisterSearchable(self, title, card, opts.Icon or "layers")
+	self._window:_RegisterSearchable(self, title, card, opts.Icon)
 
 	local pad = Instance.new("UIPadding")
 	pad.PaddingTop = UDim.new(0, PAD)
@@ -6055,7 +6062,7 @@ function Tab:AddInfoGrid(opts)
 	local height = PAD * 2 + HEADER_H + (rows > 0 and (10 + gridH) or 0)
 
 	local card = BaseCard(self._page, height)
-	self._window:_RegisterSearchable(self, title, card, opts.Icon or "layout-grid")
+	self._window:_RegisterSearchable(self, title, card, opts.Icon)
 
 	local leftInset = 0
 	if color then
@@ -6317,7 +6324,7 @@ function Tab:AddLeaderboard(opts)
 	container.Parent = self._page
 	Corner(container, NullUI.Theme.CornerRadiusSm)
 	Stroke(container, Color3.new(1, 1, 1), 1, 0.92)
-	self._window:_RegisterSearchable(self, title, container, opts.Icon or "trophy")
+	self._window:_RegisterSearchable(self, title, container, opts.Icon)
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.BackgroundTransparency = 1
@@ -6657,7 +6664,7 @@ function Tab:AddGradientCard(opts)
 	gradient.Rotation = 100
 	gradient.Parent = card
 
-	self._window:_RegisterSearchable(self, title, card, opts.Icon or "palette")
+	self._window:_RegisterSearchable(self, title, card, opts.Icon)
 
 	local PAD = 14
 	local rightReserve = opts.Callback and 32 or PAD
@@ -6750,7 +6757,7 @@ function Tab:AddToggle(opts)
 
 	local textX = AddLeadingIcon(card, opts.Icon, height)
 	AddTitleDesc(card, textX, 66, opts.Text or "Toggle", opts.Description, height)
-	self._window:_RegisterSearchable(self, opts.Text or "Toggle", card, opts.Icon or "toggle-left")
+	self._window:_RegisterSearchable(self, opts.Text or "Toggle", card, opts.Icon)
 
 	local switchBg = Instance.new("Frame")
 	switchBg.AnchorPoint = Vector2.new(1, 0.5)
@@ -6918,7 +6925,7 @@ function Tab:AddSlider(opts)
 	label.Size = UDim2.new(1, -(textX + 76), 0, 18)
 	label.ZIndex = Z.Content + 1
 	label.Parent = card
-	self._window:_RegisterSearchable(self, opts.Text or "Slider", card, opts.Icon or "sliders-horizontal")
+	self._window:_RegisterSearchable(self, opts.Text or "Slider", card, opts.Icon)
 
 	local descLabel
 	if hasDesc then
@@ -7225,7 +7232,7 @@ function Tab:AddDropdown(opts)
 	local textX = AddLeadingIcon(card, opts.Icon, height)
 
 	AddTitleDesc(card, textX, 166, opts.Text or "Dropdown", opts.Description, height)
-	self._window:_RegisterSearchable(self, opts.Text or "Dropdown", card, opts.Icon or "chevrons-up-down")
+	self._window:_RegisterSearchable(self, opts.Text or "Dropdown", card, opts.Icon)
 
 	local valueLabel = Instance.new("TextLabel")
 	valueLabel.BackgroundTransparency = 1
@@ -7641,7 +7648,7 @@ function Tab:AddTextbox(opts)
 	local titleReserve = pillMinW + 26
 
 	local _, _, refreshTextLayout = AddTitleDesc(card, textX, function() return titleReserve end, opts.Text or "Textbox", opts.Description, height)
-	self._window:_RegisterSearchable(self, opts.Text or "Textbox", card, opts.Icon or "text-cursor-input")
+	self._window:_RegisterSearchable(self, opts.Text or "Textbox", card, opts.Icon)
 
 	local pill, pillStroke = CreateInputPill(card, pillMinW)
 
@@ -7797,7 +7804,7 @@ function Tab:AddColorPicker(opts)
 	local card = BaseCard(self._page, height)
 	local textX = AddLeadingIcon(card, opts.Icon, height)
 	AddTitleDesc(card, textX, 52, opts.Text or "Color", opts.Description, height)
-	self._window:_RegisterSearchable(self, opts.Text or "Color", card, opts.Icon or "palette")
+	self._window:_RegisterSearchable(self, opts.Text or "Color", card, opts.Icon)
 
 	local color = opts.Default or Color3.fromRGB(255, 255, 255)
 	local hue, sat, val = Color3.toHSV(color)
@@ -8293,7 +8300,7 @@ function Tab:AddKeybind(opts)
 	local card = BaseCard(self._page, height)
 	local textX = AddLeadingIcon(card, opts.Icon, height)
 	AddTitleDesc(card, textX, 128, opts.Text or "Keybind", opts.Description, height)
-	self._window:_RegisterSearchable(self, opts.Text or "Keybind", card, opts.Icon or "keyboard")
+	self._window:_RegisterSearchable(self, opts.Text or "Keybind", card, opts.Icon)
 
 	local currentKey = opts.Default
 
@@ -8766,7 +8773,7 @@ function Tab:AddTable(opts)
 	container.Parent = self._page
 	Corner(container, NullUI.Theme.CornerRadiusSm)
 	Stroke(container, Color3.new(1, 1, 1), 1, 0.92)
-	self._window:_RegisterSearchable(self, title, container, opts.Icon or "table")
+	self._window:_RegisterSearchable(self, title, container, opts.Icon)
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.BackgroundTransparency = 1
@@ -9045,7 +9052,7 @@ function Tab:AddCardGrid(opts)
 	outer.Parent = self._page
 	Corner(outer, NullUI.Theme.CornerRadiusSm)
 	Stroke(outer, Color3.new(1, 1, 1), 1, 0.95)
-	self._window:_RegisterSearchable(self, opts.Title or "Cards", outer, opts.Icon or "layout-grid")
+	self._window:_RegisterSearchable(self, opts.Title or "Cards", outer, opts.Icon)
 
 	local content = Instance.new("Frame")
 	content.Name = "Content"
