@@ -358,6 +358,34 @@ Profile:AddRating({
 local Actions = Tabs.General:AddSubTab({ Name = "Actions", Icon = "Phosphor:lightning" })
 Actions:AddSection("Quick Actions", "Phosphor:lightning")
 
+-- Button groups wrap to another row when the available space is narrow.
+-- Only explicit Icon values appear in search; search shows up to 15 matches.
+local groupValue = "My profile"
+local savedGroupValue
+local ProfileActions = Actions:AddButtonGroup({
+    Gap = 6,
+    Height = 34,
+    MinButtonWidth = 96,
+    Buttons = {
+        {Text = "Save", Icon = "Lucide:save", Callback = function()
+            savedGroupValue = groupValue
+            notify("Saved", "Demo profile saved in memory.")
+        end},
+        {Text = "Load", Callback = function()
+            if savedGroupValue then groupValue = savedGroupValue end
+            notify("Load", savedGroupValue and groupValue or "Save a demo profile first.")
+        end},
+        {Text = "Delete", Callback = function()
+            savedGroupValue = nil
+            notify("Deleted", "Demo profile cleared from memory.")
+        end},
+    },
+})
+-- ProfileActions:SetEnabled(3, false) -- Disable an individual button.
+-- ProfileActions:Destroy() -- Remove the entire group.
+
+
+
 Actions:AddButton({
 	Text        = "Save Settings",
 	Description = "Saves every setting marked with a Flag",

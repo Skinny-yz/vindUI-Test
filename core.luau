@@ -4070,14 +4070,21 @@ end
 function Window:_OpenSearch()
 	local self_ = self
 	local root = NullUI._Root
-	local panelW = math.min(440, ViewportSize().X / GetUIScale() - 40)
+	local panelW = 380
 	local HEADER_H = 60
-	local MAX_RESULTS_H = math.max(60, math.min(372, ViewportSize().Y / GetUIScale() * 0.7 - HEADER_H - 12))
+	local MAX_RESULTS_H = 240
+	local function measurePanel()
+		local scale = GetUIScale()
+		local available = self_._gui.AbsoluteSize
+		panelW = math.max(100, math.min(380, available.X / scale - 32, ViewportSize().X / scale - 32))
+		MAX_RESULTS_H = math.max(20, math.min(240, available.Y / scale - HEADER_H - 44, ViewportSize().Y / scale - HEADER_H - 44))
+	end
+	measurePanel()
 	local ROW_H = 36
 
 	local open = true
 	local backdrop, panel, scale
-	local heartbeatConn, textConn, focusConn, keyConn
+	local heartbeatConn, textConn, focusConn, keyConn, resizeConn
 	local rows, selectedIndex = {}, 1
 	local lastMatches = {}
 
@@ -4087,6 +4094,7 @@ function Window:_OpenSearch()
 		if not open then return end
 		open = false
 		RegisterPopupClose(closeSearch)
+		if resizeConn then resizeConn:Destroy(); resizeConn = nil end
 		if keyConn then keyConn:Disconnect(); keyConn = nil end
 		if heartbeatConn then heartbeatConn:Disconnect(); heartbeatConn = nil end
 		if textConn then textConn:Disconnect(); textConn = nil end
@@ -4259,7 +4267,7 @@ function Window:_OpenSearch()
 	local function selectRow(index, scrollIntoView)
 		selectedIndex = math.clamp(index, 1, math.max(1, #rows))
 		for i, row in ipairs(rows) do
-			row.BackgroundTransparency = i == selectedIndex and 0.91 or 1
+			Tween(row, {BackgroundTransparency = i == selectedIndex and 0.91 or 1}, 0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 		end
 		local row = rows[selectedIndex]
 		if scrollIntoView and row then
@@ -4369,7 +4377,7 @@ function Window:_OpenSearch()
 				selectRow(i, false)
 			end)
 			row.MouseLeave:Connect(function()
-				row.BackgroundTransparency = i == selectedIndex and 0.91 or 1
+				Tween(row, {BackgroundTransparency = i == selectedIndex and 0.91 or 1}, 0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 			end)
 			row.MouseButton1Click:Connect(function()
 				activate(entry)
@@ -4383,12 +4391,23 @@ function Window:_OpenSearch()
 		if resultsH > 0 then
 			extraH = resultsH + 12
 		elseif showEmpty then
-			extraH = 60
+			extraH = math.min(60, MAX_RESULTS_H + 12)
 		end
 
 		Tween(resultsHolder, { Size = UDim2.new(1, -24, 0, resultsH) }, 0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut)
 		Tween(panel, { Size = UDim2.new(0, panelW, 0, HEADER_H + extraH) }, 0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut)
 	end
+
+	resizeConn = ObserveProperties({{self_._gui, "AbsoluteSize", "AbsolutePosition"}}, function()
+		if not open or not panel then return end
+		measurePanel()
+		local cx, cy = ComputeDialogCenter(self_._gui)
+		restY = math.round(cy / GetUIScale())
+		panel.Position = UDim2.fromOffset(math.round(cx / GetUIScale()), restY)
+		local resultsH = math.min(resultsHolder.Size.Y.Offset, MAX_RESULTS_H)
+		resultsHolder.Size = UDim2.new(1, -24, 0, resultsH)
+		panel.Size = UDim2.fromOffset(panelW, HEADER_H + (resultsHolder.Visible and resultsH + 12 or math.min(60, MAX_RESULTS_H + 12)))
+	end)
 
 	local rebuildToken = 0
 	textConn = box:GetPropertyChangedSignal("Text"):Connect(function()
@@ -5446,6 +5465,118 @@ function Tab:AddRating(opts)
 			if newText ~= nil then feedback.Box.Text = newText end
 		end,
 		Destroy = function() card:Destroy() end,
+	}
+end
+
+function Tab:AddButtonGroup(opts)
+	opts = opts or {}
+	local items = opts.Buttons or opts
+	local gap = math.clamp(tonumber(opts.Gap) or 6, 0, 24)
+	local height = math.clamp(tonumber(opts.Height) or 34, 28, 64)
+	local minWidth = math.max(60, tonumber(opts.MinButtonWidth) or 96)
+	local group = Instance.new("Frame")
+	group.Name = "ButtonGroup"
+	group.BackgroundTransparency = 1
+	group.BorderSizePixel = 0
+	group.Size = UDim2.new(1, 0, 0, height)
+	group.ZIndex = Z.Content
+	group.Parent = self._page
+	local jan = Janitor.new()
+	self._janitor:Add(jan)
+	local buttons = {}
+	for _, item in ipairs(items) do
+		if type(item) == "string" then item = {Text = item} end
+		if type(item) == "table" then
+			local button = Instance.new("TextButton")
+			button.Name = "GroupButton"
+			button.Text = ""
+			button.AutoButtonColor = false
+			button.BorderSizePixel = 0
+			BindTheme(button, "BackgroundColor3", "Card")
+			button.BackgroundTransparency = 0.96
+			button.ZIndex = Z.Content + 1
+			button.Parent = group
+			Corner(button, NullUI.Theme.CornerRadiusSm)
+			Stroke(button, Color3.new(1, 1, 1), 1, 0.88)
+			local asset = item.Icon and ResolveIcon(item.Icon) or ""
+			local hasIcon = asset ~= nil and asset ~= "" and asset ~= false
+			local label = Instance.new("TextLabel")
+			label.BackgroundTransparency = 1
+			label.FontFace = NullUI.Theme.FontRegular
+			label.Text = tostring(item.Text or "Button")
+			label.TextSize = 13
+			label.TextTruncate = Enum.TextTruncate.AtEnd
+			BindTheme(label, "TextColor3", "Text")
+			label.ZIndex = Z.Content + 2
+			label.Parent = button
+			local icon
+			if hasIcon then
+				icon = Instance.new("ImageLabel")
+				icon.BackgroundTransparency = 1
+				icon.Image = asset
+				BindTheme(icon, "ImageColor3", "Text")
+				icon.Size = UDim2.fromOffset(14, 14)
+				icon.AnchorPoint = Vector2.new(0, 0.5)
+				icon.ZIndex = Z.Content + 2
+				icon.Parent = button
+			end
+			local entry = {Instance = button, Label = label, Icon = icon, Enabled = item.Disabled ~= true}
+			buttons[#buttons + 1] = entry
+			local index = #buttons
+			local function enabled(value)
+				entry.Enabled = value ~= false
+				button.Active = entry.Enabled
+				button.Selectable = entry.Enabled
+				label.TextTransparency = entry.Enabled and 0 or 0.55
+				if icon then icon.ImageTransparency = entry.Enabled and 0 or 0.55 end
+				button.BackgroundTransparency = 0.96
+			end
+			entry.SetEnabled = function(_, value) enabled(value) end
+			enabled(entry.Enabled)
+			jan:Add(button.MouseEnter:Connect(function()
+				if entry.Enabled then Tween(button, {BackgroundTransparency = 0.88}, 0.15) end
+			end))
+			jan:Add(button.MouseLeave:Connect(function()
+				Tween(button, {BackgroundTransparency = 0.96}, 0.15)
+			end))
+			jan:Add(button.Activated:Connect(function()
+				if entry.Enabled and type(item.Callback) == "function" then task.spawn(item.Callback, index) end
+			end))
+			self._window:_RegisterSearchable(self, label.Text, button, item.Icon)
+		end
+	end
+	local function layout()
+		local width = math.max(1, group.AbsoluteSize.X / GetUIScale())
+		local count = #buttons
+		if count == 0 then group.Size = UDim2.new(1, 0, 0, 0); return end
+		local columns = math.clamp(math.floor((width + gap) / (minWidth + gap)), 1, count)
+		local rowCount = math.ceil(count / columns)
+		group.Size = UDim2.new(1, 0, 0, rowCount * height + (rowCount - 1) * gap)
+		for i, entry in ipairs(buttons) do
+			local row = math.floor((i - 1) / columns)
+			local col = (i - 1) % columns
+			local rowItems = math.min(columns, count - row * columns)
+			local cellWidth = math.max(1, (width - gap * (rowItems - 1)) / rowItems)
+			entry.Instance.Position = UDim2.fromOffset(col * (cellWidth + gap), row * (height + gap))
+			entry.Instance.Size = UDim2.fromOffset(cellWidth, height)
+			local iconWidth = entry.Icon and 20 or 0
+			local textWidth = math.min(MeasureText(entry.Label.Text, 13, 10000), math.max(1, cellWidth - 16 - iconWidth))
+			local left = math.max(8, (cellWidth - textWidth - iconWidth) / 2)
+			entry.Label.Position = UDim2.fromOffset(left + iconWidth, 0)
+			entry.Label.Size = UDim2.new(0, textWidth, 1, 0)
+			if entry.Icon then entry.Icon.Position = UDim2.new(0, left, 0.5, 0) end
+		end
+	end
+	jan:Add(group:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout))
+	jan:Add(group.Destroying:Connect(function() jan:Destroy() end))
+	layout()
+	return {
+		Instance = group,
+		Buttons = buttons,
+		SetEnabled = function(_, index, value)
+			if buttons[index] then buttons[index]:SetEnabled(value) end
+		end,
+		Destroy = function() jan:Destroy(); group:Destroy() end,
 	}
 end
 
