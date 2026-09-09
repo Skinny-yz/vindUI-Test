@@ -1068,7 +1068,7 @@ local function GetNotifyHolder()
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
 	layout.Padding = UDim.new(0, 10)
 	layout.Parent = holder
-	holder.ClipsDescendants = true
+	holder.ClipsDescendants = false
 	-- Reserve room for the outside half of rounded strokes on every edge.
 	local safePadding = Instance.new("UIPadding")
 	safePadding.PaddingLeft = UDim.new(0, 4)
@@ -1148,7 +1148,7 @@ function NullUI:Notify(opts)
 	BindTheme(card, "BackgroundColor3", "Surface")
 	card.BackgroundTransparency = 1
 	card.BorderSizePixel = 0
-	card.ClipsDescendants = true
+	card.ClipsDescendants = false
 	card.AutomaticSize = Enum.AutomaticSize.Y
 	card.Size = UDim2.new(1, 0, 0, 0)
 	card.LayoutOrder = NullUI._NotifyCounter
@@ -1343,11 +1343,13 @@ function NullUI:Notify(opts)
 		Tween(titleLabel, { TextTransparency = 1 }, 0.16)
 		if textLabel then Tween(textLabel, { TextTransparency = 1 }, 0.16) end
 
-		task.delay(0.1, function()
-			if card and card.Parent then
-				Tween(card, { Size = UDim2.new(1, 0, 0, 0) }, 0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
-			end
-		end)
+		Tween(barHolder, { BackgroundTransparency = 1 }, 0.16)
+		Tween(bar, { BackgroundTransparency = 1 }, 0.16)
+		for _, action in ipairs(actionButtons) do
+			Tween(action.Button, { BackgroundTransparency = 1 }, 0.16)
+			Tween(action.Stroke, { Transparency = 1 }, 0.16)
+			Tween(action.Label, { TextTransparency = 1 }, 0.16)
+		end
 
 		task.delay(0.34, function()
 			if notificationAcrylic then
@@ -1365,7 +1367,7 @@ function NullUI:Notify(opts)
 		card.Visible = true
 		notificationAcrylic = CreateWindowAcrylic(card)
 	Tween(card, { BackgroundTransparency = 0.08 }, 0.28)
-	Tween(stroke, { Transparency = 0.88 }, 0.28)
+	Tween(stroke, { Transparency = 0.65 }, 0.28)
 	Tween(scale, { Scale = 1 }, 0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 	Tween(icon, { ImageTransparency = 0 }, 0.28)
 	Tween(titleLabel, { TextTransparency = 0 }, 0.28)
