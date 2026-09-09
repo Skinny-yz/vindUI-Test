@@ -1055,7 +1055,7 @@ local function GetNotifyHolder()
 	holder.Name = "NotificationHolder"
 	holder.AnchorPoint = Vector2.new(1, 1)
 	holder.Position = UDim2.new(1, -20, 1, -20)
-	holder.Size = UDim2.new(0, 252, 1, -40)
+	holder.Size = UDim2.new(0, 288, 1, -40)
 	holder.BackgroundTransparency = 1
 	holder.ZIndex = Z.Toast
 	holder.Parent = root
@@ -1079,7 +1079,7 @@ local function GetNotifyHolder()
 		if not holder.Parent then return end
 		local s = GetUIScale()
 		local view = ViewportSize()
-		holder.Size = UDim2.fromOffset(math.max(1, math.min(252, view.X / s - 40)), math.max(1, view.Y / s - 40))
+		holder.Size = UDim2.fromOffset(math.max(1, math.min(288, view.X / s - 40)), math.max(1, view.Y / s - 40))
 		local used, count = 0, 0
 		local function fullHeight(card)
 			local anim = card:FindFirstChildOfClass("UIScale")
@@ -1157,25 +1157,25 @@ function NullUI:Notify(opts)
 	local stroke = Stroke(card, Color3.new(1, 1, 1), 1, 1)
 	local notificationAcrylic = nil
 	local scale = Instance.new("UIScale")
-	scale.Scale = 0.797
+	scale.Scale = 0.97
 	scale.Parent = card
 
 	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, 9)
-	padding.PaddingBottom = UDim.new(0, 9)
-	padding.PaddingLeft = UDim.new(0, 11)
-	padding.PaddingRight = UDim.new(0, 11)
+	padding.PaddingTop = UDim.new(0, 10)
+	padding.PaddingBottom = UDim.new(0, 10)
+	padding.PaddingLeft = UDim.new(0, 10)
+	padding.PaddingRight = UDim.new(0, 10)
 	padding.Parent = card
 
 	local layout = Instance.new("UIListLayout")
-	layout.Padding = UDim.new(0, 5)
+	layout.Padding = UDim.new(0, 6)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = card
 
 	local headerRow = Instance.new("Frame")
 	headerRow.BackgroundTransparency = 1
 	headerRow.AutomaticSize = Enum.AutomaticSize.Y
-	headerRow.Size = UDim2.new(1, 0, 0, 16)
+	headerRow.Size = UDim2.new(1, 0, 0, 14)
 	headerRow.LayoutOrder = 1
 	headerRow.ZIndex = Z.Toast + 1
 	headerRow.Parent = card
@@ -1203,11 +1203,11 @@ function NullUI:Notify(opts)
 	titleLabel.Text = title
 	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextTransparency = 1
-	titleLabel.TextSize = 13
+	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.AutomaticSize = Enum.AutomaticSize.Y
 	titleLabel.TextWrapped = true
-	titleLabel.Size = UDim2.new(1, -21, 0, 16)
+	titleLabel.Size = UDim2.new(1, -21, 0, 14)
 	titleLabel.LayoutOrder = 2
 	titleLabel.ZIndex = Z.Toast + 1
 	titleLabel.Parent = headerRow
@@ -1299,7 +1299,7 @@ function NullUI:Notify(opts)
 	barHolder.BackgroundColor3 = Color3.new(1, 1, 1)
 	barHolder.BackgroundTransparency = 1
 	barHolder.BorderSizePixel = 0
-	barHolder.Size = UDim2.new(1, 0, 0, 2)
+	barHolder.Size = UDim2.new(1, 0, 0, 3)
 	barHolder.LayoutOrder = 4
 	barHolder.ZIndex = Z.Toast + 1
 	barHolder.Parent = card
@@ -1366,7 +1366,7 @@ function NullUI:Notify(opts)
 		notificationAcrylic = CreateWindowAcrylic(card)
 	Tween(card, { BackgroundTransparency = 0.08 }, 0.28)
 	Tween(stroke, { Transparency = 0.65 }, 0.28)
-	Tween(scale, { Scale = 0.82 }, 0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+	Tween(scale, { Scale = 1 }, 0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 	Tween(icon, { ImageTransparency = 0 }, 0.28)
 	Tween(titleLabel, { TextTransparency = 0 }, 0.28)
 	Tween(barHolder, { BackgroundTransparency = 0.88 }, 0.28)
