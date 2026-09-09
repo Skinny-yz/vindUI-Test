@@ -1230,3 +1230,25 @@ Panels:AddButton({Text = "Interface preferences", Callback = function()
 end})
 Window:SelectTab("Components")
 Window:Open()
+
+-- New elements: values with Flag are included in saved / copied configurations.
+local New = Window:AddTab({Name = "New Elements", Icon = "Lucide:blocks"})
+New:AddSegmentedControl({Text="Mode", Options={"Normal","Fast","Custom"}, Default="Normal", Flag="new_mode"})
+New:AddRangeSlider({Text="Range", Min=0, Max=100, Step=1, Default={20,80}, Flag="new_range"})
+New:AddNumberInput({Text="Amount", Min=0, Max=1000, Step=5, Default=25, Flag="new_amount"})
+New:AddListEditor({Text="Names", Default={"Alpha","Beta"}, Flag="new_names"})
+New:AddRadioGroup({Text="Quality", Options={"Low","Medium","High"}, Default="High", Flag="new_quality"})
+New:AddCheckboxGroup({Text="Visible details", Options={"Names","Distance","Health"}, Default={"Names","Health"}, Flag="new_details"})
+local Progress = New:AddProgressBar({Text="Progress", Default=35, Min=0, Max=100})
+New:AddButtonGroup({Buttons={
+ {Text="Advance", Callback=function() Progress:Set(math.min(100,Progress:Get()+10)) end},
+ {Text="Reset", Callback=function() Progress:Set(0) end},
+}})
+New:AddImageCard({Title="Profile preview", Description="Image with an action below.", Image="rbxthumb://type=AvatarHeadShot&id="..LocalPlayer.UserId.."&w=420&h=420", Height=140, Actions={
+ {Text="Preview notification", Callback=function() notify("Image card", "Action clicked.") end},
+}})
+New:AddMultiLineTextbox({Text="Notes / JSON", Height=110, Default='{\n  "enabled": true\n}', Flag="new_notes", Placeholder="Enter multiple lines..."})
+New:AddButton({Text="Copy config as JSON", Icon="Lucide:copy", Callback=function()
+ local ok, result = VindUI:CopyConfigJSON()
+ notify(ok and "Copied" or "Copy unavailable", ok and "Configuration copied as JSON." or tostring(result))
+end})

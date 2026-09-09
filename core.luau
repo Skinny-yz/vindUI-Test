@@ -9991,6 +9991,159 @@ function Tab:AddCardGrid(opts)
 	}
 end
 
+-- Extended input elements share the same theme, search and flag lifecycle.
+do
+local function shell(tab, opts)
+ local card = BaseCard(tab._page, 0)
+ card.AutomaticSize = Enum.AutomaticSize.Y
+ local pad = Instance.new('UIPadding');pad.PaddingLeft=UDim.new(0,12);pad.PaddingRight=UDim.new(0,12);pad.PaddingTop=UDim.new(0,10);pad.PaddingBottom=UDim.new(0,10);pad.Parent=card
+ local list=Instance.new('UIListLayout');list.Padding=UDim.new(0,8);list.SortOrder=Enum.SortOrder.LayoutOrder;list.Parent=card
+ local function label(text,size)
+  local l=Instance.new('TextLabel');l.BackgroundTransparency=1;l.Text=tostring(text);l.TextSize=size;l.FontFace=NullUI.Theme.FontRegular;l.TextWrapped=true;l.TextXAlignment=Enum.TextXAlignment.Left;l.Size=UDim2.new(1,0,0,size+3);l.AutomaticSize=Enum.AutomaticSize.Y;l.ZIndex=Z.Content+1;l.Parent=card;BindTheme(l,'TextColor3','Text');return l
+ end
+ label(opts.Text or opts.Title or 'Control',13).LayoutOrder=0
+ if opts.Description then local l=label(opts.Description,12);l.LayoutOrder=1;BindTheme(l,'TextColor3','TextDim') end
+ local body=Instance.new('Frame');body.BackgroundTransparency=1;body.Size=UDim2.new(1,0,0,32);body.LayoutOrder=2;body.ZIndex=Z.Content+1;body.Parent=card
+ tab._window:_RegisterSearchable(tab,opts.Text or opts.Title or 'Control',card,opts.Icon)
+ local jan=Janitor.new();tab._janitor:Add(jan);jan:Add(card.Destroying:Connect(function()jan:Destroy()end))
+ return card,body,jan
+end
+local function button(parent,text)
+ local b=Instance.new('TextButton');b.Text=text;b.FontFace=NullUI.Theme.FontRegular;b.TextSize=13;b.AutoButtonColor=false;b.BackgroundTransparency=.9;b.BorderSizePixel=0;b.ZIndex=Z.Content+3;b.Parent=parent;BindTheme(b,'BackgroundColor3','Surface');BindTheme(b,'TextColor3','Text');Corner(b,6);return b
+end
+local function field(parent)
+ local b=Instance.new('TextBox');b.Text='';b.ClearTextOnFocus=false;b.FontFace=NullUI.Theme.FontRegular;b.TextSize=13;b.BackgroundTransparency=.9;b.BorderSizePixel=0;b.Size=UDim2.fromScale(1,1);b.ZIndex=Z.Content+2;b.Parent=parent;BindTheme(b,'BackgroundColor3','Surface');BindTheme(b,'TextColor3','Text');Corner(b,6);return b
+end
+local function state(opts,card,jan,kind,initial,normalize,render)
+ local value;local listeners={};local api={Instance=card}
+ api.Get=function()return type(value)=='table' and table.clone(value) or value end
+ api.Set=function(_,v,silent)
+  value=normalize(v);render(value)
+  if not silent then
+   if type(opts.Callback)=='function' then task.spawn(opts.Callback,api.Get()) end
+   for _,fn in pairs(listeners)do task.spawn(fn,api.Get())end
+  end
+ end
+ api.OnChanged=function(_,fn)local token={};listeners[token]=fn;return {Disconnect=function()listeners[token]=nil end}end
+ api.Destroy=function()jan:Destroy();table.clear(listeners);if opts.Flag and NullUI.Flags[opts.Flag]==api then NullUI.Flags[opts.Flag]=nil end;card:Destroy()end
+ api:Set(initial,true);return RegisterFlag(opts,api,kind)
+end
+local function numberRules(opts)
+ local lo=tonumber(opts.Min) or 0;local hi=math.max(lo,tonumber(opts.Max) or 100);local step=math.max(.000001,tonumber(opts.Step) or 1)
+ return lo,hi,step,function(v)local n=tonumber(v);if not n or n~=n then n=lo end;return math.clamp(lo+math.round((n-lo)/step)*step,lo,hi)end
+end
+function Tab:AddNumberInput(opts)
+ opts=opts or {};local card,body,jan=shell(self,opts);local lo,hi,step,norm=numberRules(opts)
+ local minus=button(body,'−');minus.Size=UDim2.fromOffset(32,32)
+ local plus=button(body,'+');plus.AnchorPoint=Vector2.new(1,0);plus.Position=UDim2.fromScale(1,0);plus.Size=minus.Size
+ local box=field(body);box.Position=UDim2.fromOffset(38,0);box.Size=UDim2.new(1,-76,1,0)
+ local api=state(opts,card,jan,'NumberInput',opts.Default or lo,norm,function(v)box.Text=tostring(v)end)
+ jan:Add(minus.Activated:Connect(function()api:Set(api:Get()-step)end));jan:Add(plus.Activated:Connect(function()api:Set(api:Get()+step)end))
+ jan:Add(box.FocusLost:Connect(function()if tonumber(box.Text)then api:Set(box.Text)else box.Text=tostring(api:Get())end end));return api
+end
+local function choices(tab,opts,kind)
+ opts=opts or {};local card,body,jan=shell(tab,opts);local values={};for _,v in ipairs(opts.Options or {})do v=tostring(v);if not table.find(values,v)then table.insert(values,v)end end
+ local multi=kind=='CheckboxGroup';local segmented=kind=='SegmentedControl';local rows={};local indicator
+ if segmented then indicator=Instance.new('Frame');indicator.BackgroundTransparency=.75;indicator.BorderSizePixel=0;indicator.ZIndex=Z.Content+2;indicator.Parent=body;BindTheme(indicator,'BackgroundColor3','Accent');Corner(indicator,6) end
+ local api
+ local function layout()
+  local width=math.max(1,body.AbsoluteSize.X/GetUIScale());local cols=segmented and math.max(1,math.min(#values,math.floor(width/90))) or 1
+  body.Size=UDim2.new(1,0,0,math.ceil(#values/cols)*36)
+  for i,b in ipairs(rows)do b.Position=UDim2.new(((i-1)%cols)/cols,0,0,math.floor((i-1)/cols)*36);b.Size=UDim2.new(1/cols,-4,0,32)end
+  if api then api:Set(api:Get(),true)end
+ end
+ for i,v in ipairs(values)do local b=button(body,v);b.TextTruncate=Enum.TextTruncate.AtEnd;rows[i]=b
+  jan:Add(b.Activated:Connect(function()if multi then local list=api:Get();local at=table.find(list,v);if at then table.remove(list,at)else table.insert(list,v)end;api:Set(list)else api:Set(v)end end))
+ end
+ local function norm(v)
+  if multi then local result={};for _,name in ipairs(values)do if type(v)=='table' and table.find(v,name)then table.insert(result,name)end end;return result end
+  return table.find(values,tostring(v)) and tostring(v) or values[1]
+ end
+ api=state(opts,card,jan,kind,opts.Default,norm,function(v)
+  for i,b in ipairs(rows)do local selected=multi and table.find(v,values[i])~=nil or not multi and v==values[i]
+   b.Text=(segmented and '' or (multi and (selected and '☑  ' or '☐  ') or (selected and '●  ' or '○  ')))..values[i]
+   b.BackgroundTransparency=selected and .8 or 1
+   if segmented and selected then b.BackgroundTransparency=1;Tween(indicator,{Position=b.Position,Size=b.Size},.22,Enum.EasingStyle.Quint,Enum.EasingDirection.Out)end
+  end
+ end)
+ jan:Add(body:GetPropertyChangedSignal('AbsoluteSize'):Connect(layout));layout();return api
+end
+function Tab:AddSegmentedControl(opts)return choices(self,opts,'SegmentedControl')end
+function Tab:AddRadioGroup(opts)return choices(self,opts,'RadioGroup')end
+function Tab:AddCheckboxGroup(opts)return choices(self,opts,'CheckboxGroup')end
+function Tab:AddMultiLineTextbox(opts)
+ opts=opts or {};local card,body,jan=shell(self,opts);body.Size=UDim2.new(1,0,0,math.clamp(tonumber(opts.Height)or 100,60,400))
+ local scroll=Instance.new('ScrollingFrame');scroll.BackgroundTransparency=1;scroll.BorderSizePixel=0;scroll.Size=UDim2.fromScale(1,1);scroll.AutomaticCanvasSize=Enum.AutomaticSize.Y;scroll.CanvasSize=UDim2.new();scroll.ScrollBarThickness=3;scroll.ZIndex=Z.Content+2;scroll.Parent=body;BindTheme(scroll,'ScrollBarImageColor3','TextDim')
+ local box=field(scroll);box.Size=UDim2.new(1,-6,0,body.Size.Y.Offset);box.AutomaticSize=Enum.AutomaticSize.Y;box.MultiLine=true;box.TextWrapped=true;box.TextXAlignment=Enum.TextXAlignment.Left;box.TextYAlignment=Enum.TextYAlignment.Top;box.PlaceholderText=opts.Placeholder or 'Enter text...';box.ClipsDescendants=true
+ local pad=Instance.new('UIPadding');pad.PaddingLeft=UDim.new(0,8);pad.PaddingRight=UDim.new(0,8);pad.PaddingTop=UDim.new(0,8);pad.PaddingBottom=UDim.new(0,8);pad.Parent=box
+ local api=state(opts,card,jan,'MultiLineTextbox',opts.Default or '',function(v)return tostring(v or '')end,function(v)box.Text=v end)
+ jan:Add(box.FocusLost:Connect(function()api:Set(box.Text)end));api.TextBox=box;return api
+end
+function Tab:AddProgressBar(opts)
+ opts=opts or {};local card,body,jan=shell(self,opts);body.Size=UDim2.new(1,0,0,26)
+ local track=Instance.new('Frame');track.BackgroundTransparency=.85;track.BorderSizePixel=0;track.Size=UDim2.new(1,0,0,5);track.Position=UDim2.fromOffset(0,21);track.ZIndex=Z.Content+2;track.Parent=body;BindTheme(track,'BackgroundColor3','TextDim');Corner(track,3)
+ local fill=Instance.new('Frame');fill.BorderSizePixel=0;fill.ZIndex=Z.Content+3;fill.Parent=track;BindTheme(fill,'BackgroundColor3','Accent');Corner(fill,3)
+ local label=Instance.new('TextLabel');label.BackgroundTransparency=1;label.Size=UDim2.new(1,0,0,16);label.FontFace=NullUI.Theme.FontRegular;label.TextSize=12;label.ZIndex=Z.Content+2;label.Parent=body;BindTheme(label,'TextColor3','TextDim')
+ local lo,hi,step,norm=numberRules(opts)
+ return state(opts,card,jan,'ProgressBar',opts.Default or lo,norm,function(v)local ratio=hi>lo and (v-lo)/(hi-lo)or 0;label.Text=(opts.Label and tostring(opts.Label)..' · 'or '')..math.round(ratio*100)..'%';Tween(fill,{Size=UDim2.new(ratio,0,1,0)},.2)end)
+end
+function Tab:AddImageCard(opts)
+ opts=opts or {};local card,body,jan=shell(self,opts);body.Size=UDim2.new(1,0,0,math.clamp(tonumber(opts.Height)or 150,60,400))
+ local img=Instance.new('ImageLabel');img.BackgroundTransparency=1;img.Image=tostring(opts.Image or '');if img.Image:match('^%d+$')then img.Image='rbxassetid://'..img.Image end;img.Size=UDim2.fromScale(1,1);img.ScaleType=Enum.ScaleType.Fit;img.ZIndex=Z.Content+2;img.Parent=body;Corner(img,8)
+ if opts.Actions then local proxy=setmetatable({_page=card,_window=self._window,_janitor=jan,Name=self.Name},{__index=self});local group=proxy:AddButtonGroup({Buttons=opts.Actions});group.Instance.LayoutOrder=3 end
+ return {Instance=card,SetImage=function(_,image)img.Image=tostring(image or '');if img.Image:match('^%d+$')then img.Image='rbxassetid://'..img.Image end end,Destroy=function()jan:Destroy();card:Destroy()end}
+end
+function Tab:AddRangeSlider(opts)
+ opts=opts or {};local card,body,jan=shell(self,opts);body.Size=UDim2.new(1,0,0,54);local lo,hi,step,norm=numberRules(opts)
+ local low=field(body);low.Size=UDim2.new(.5,-4,0,24)
+ local high=field(body);high.Position=UDim2.new(.5,4,0,0);high.Size=low.Size
+ local track=Instance.new('Frame');track.Size=UDim2.new(1,-16,0,4);track.Position=UDim2.new(0,8,0,40);track.BorderSizePixel=0;track.BackgroundTransparency=.7;track.ZIndex=Z.Content+2;track.Parent=body;BindTheme(track,'BackgroundColor3','TextDim');Corner(track,2)
+ local fill=Instance.new('Frame');fill.BorderSizePixel=0;fill.ZIndex=Z.Content+3;fill.Parent=track;BindTheme(fill,'BackgroundColor3','Accent')
+ local handles={};for i=1,2 do local b=button(track,'');b.BackgroundTransparency=0;b.AnchorPoint=Vector2.new(.5,.5);b.Size=UDim2.fromOffset(14,14);BindTheme(b,'BackgroundColor3','SliderKnob');Corner(b,7);handles[i]=b end
+ local api=state(opts,card,jan,'RangeSlider',opts.Default or {lo,hi},function(v)v=type(v)=='table'and v or {lo,hi};local a,b=norm(v[1]),norm(v[2]or hi);return {math.min(a,b),math.max(a,b)}end,function(v)
+  low.Text=tostring(v[1]);high.Text=tostring(v[2]);local span=hi-lo;local a=span>0 and(v[1]-lo)/span or 0;local b=span>0 and(v[2]-lo)/span or 0
+  handles[1].Position=UDim2.new(a,0,.5,0);handles[2].Position=UDim2.new(b,0,.5,0);fill.Position=UDim2.fromScale(a,0);fill.Size=UDim2.fromScale(b-a,1)
+ end)
+ local dragging,touch
+ local function move(x)if not dragging then return end;local v=api:Get();local n=norm(lo+math.clamp((x-track.AbsolutePosition.X)/math.max(1,track.AbsoluteSize.X),0,1)*(hi-lo));v[dragging]=dragging==1 and math.min(n,v[2])or math.max(n,v[1]);api:Set(v)end
+ for i,h in ipairs(handles)do jan:Add(h.InputBegan:Connect(function(input)if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragging=i;touch=input;move(input.Position.X)end end))end
+ jan:Add(UserInputService.InputChanged:Connect(function(input)if dragging and(input==touch or input.UserInputType==Enum.UserInputType.MouseMovement and touch.UserInputType~=Enum.UserInputType.Touch)then move(input.Position.X)end end))
+ jan:Add(UserInputService.InputEnded:Connect(function(input)if input==touch or input.UserInputType==Enum.UserInputType.MouseButton1 then dragging=nil;touch=nil end end))
+ jan:Add(low.FocusLost:Connect(function()api:Set({tonumber(low.Text)or api:Get()[1],api:Get()[2]})end));jan:Add(high.FocusLost:Connect(function()api:Set({api:Get()[1],tonumber(high.Text)or api:Get()[2]})end));return api
+end
+function Tab:AddListEditor(opts)
+ opts=opts or {};local card,body,jan=shell(self,opts);body.AutomaticSize=Enum.AutomaticSize.Y;body.Size=UDim2.new(1,0,0,0)
+ local list=Instance.new('UIListLayout');list.Padding=UDim.new(0,6);list.SortOrder=Enum.SortOrder.LayoutOrder;list.Parent=body
+ local api;local renderJan=Janitor.new();jan:Add(function()renderJan:Destroy()end)
+ local function render(values)
+  renderJan:Destroy();renderJan=Janitor.new()
+  for _,child in ipairs(body:GetChildren())do if child:IsA('GuiObject')then child:Destroy()end end
+  for i,v in ipairs(values)do
+   local row=Instance.new('Frame');row.BackgroundTransparency=1;row.Size=UDim2.new(1,0,0,30);row.LayoutOrder=i;row.Parent=body
+   local box=field(row);box.Size=UDim2.new(1,-36,1,0);box.Text=v
+   local remove=button(row,'×');remove.Position=UDim2.new(1,-30,0,0);remove.Size=UDim2.fromOffset(30,30)
+   renderJan:Add(box.FocusLost:Connect(function()local data=api:Get();if data[i]~=box.Text then data[i]=box.Text;api:Set(data)end end))
+   renderJan:Add(remove.Activated:Connect(function()local data=api:Get();table.remove(data,i);api:Set(data)end))
+  end
+  local add=button(body,'+ Add item');add.Size=UDim2.new(1,0,0,30);add.LayoutOrder=#values+1
+  renderJan:Add(add.Activated:Connect(function()local data=api:Get();table.insert(data,'New item');api:Set(data)end))
+ end
+ api=state(opts,card,jan,'ListEditor',opts.Default or {},function(v)local result={};if type(v)=='table'then for _,text in ipairs(v)do table.insert(result,tostring(text))end end;return result end,render)
+ api.Add=function(_,text)local data=api:Get();table.insert(data,tostring(text or ''));api:Set(data)end
+ api.Remove=function(_,i)local data=api:Get();if data[i]then table.remove(data,i);api:Set(data)end end
+ return api
+end
+end
+
+function NullUI:CopyConfigJSON()
+ local ok,json=pcall(function()return HttpService:JSONEncode(self:GetConfig())end)
+ if not ok then return false,tostring(json)end
+ local copy=hasFn('setclipboard') or hasFn('toclipboard')
+ if not copy then return false,'Clipboard unavailable',json end
+ local copied,err=pcall(copy,json);if not copied then return false,tostring(err),json end
+ return true,json
+end
+
 function NullUI:GetConfig()
 	local data = {}
 	for flag, api in pairs(NullUI.Flags) do
