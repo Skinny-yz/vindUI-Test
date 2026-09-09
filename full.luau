@@ -1057,7 +1057,7 @@ local function GetNotifyHolder()
 	holder.Name = "NotificationHolder"
 	holder.AnchorPoint = Vector2.new(1, 1)
 	holder.Position = UDim2.new(1, -20, 1, -20)
-	holder.Size = UDim2.new(0, 288, 1, -40)
+	holder.Size = UDim2.new(0, 308, 1, -40)
 	holder.BackgroundTransparency = 1
 	holder.ZIndex = Z.Toast
 	holder.Parent = root
@@ -1081,7 +1081,7 @@ local function GetNotifyHolder()
 		if not holder.Parent then return end
 		local s = GetUIScale()
 		local view = ViewportSize()
-		holder.Size = UDim2.fromOffset(math.max(1, math.min(288, view.X / s - 40)), math.max(1, view.Y / s - 40))
+		holder.Size = UDim2.fromOffset(math.max(1, math.min(308, view.X / s - 40)), math.max(1, view.Y / s - 40))
 		local used, count = 0, 0
 		local function fullHeight(card)
 			local anim = card:FindFirstChildOfClass("UIScale")
@@ -1177,7 +1177,7 @@ function NullUI:Notify(opts)
 	local headerRow = Instance.new("Frame")
 	headerRow.BackgroundTransparency = 1
 	headerRow.AutomaticSize = Enum.AutomaticSize.Y
-	headerRow.Size = UDim2.new(1, 0, 0, 14)
+	headerRow.Size = UDim2.new(1, 0, 0, 18)
 	headerRow.LayoutOrder = 1
 	headerRow.ZIndex = Z.Toast + 1
 	headerRow.Parent = card
@@ -1194,7 +1194,7 @@ function NullUI:Notify(opts)
 	icon.Image = ResolveIcon(iconName)
 	icon.ImageColor3 = color
 	icon.ImageTransparency = 1
-	icon.Size = UDim2.fromOffset(14, 14)
+	icon.Size = UDim2.fromOffset(16, 16)
 	icon.LayoutOrder = 1
 	icon.ZIndex = Z.Toast + 1
 	icon.Parent = headerRow
@@ -1205,11 +1205,11 @@ function NullUI:Notify(opts)
 	titleLabel.Text = title
 	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextTransparency = 1
-	titleLabel.TextSize = 14
+	titleLabel.TextSize = 15
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.AutomaticSize = Enum.AutomaticSize.Y
 	titleLabel.TextWrapped = true
-	titleLabel.Size = UDim2.new(1, -21, 0, 14)
+	titleLabel.Size = UDim2.new(1, -23, 0, 18)
 	titleLabel.LayoutOrder = 2
 	titleLabel.ZIndex = Z.Toast + 1
 	titleLabel.Parent = headerRow
@@ -1222,7 +1222,7 @@ function NullUI:Notify(opts)
 		textLabel.Text = text
 		BindTheme(textLabel, "TextColor3", "TextDim")
 		textLabel.TextTransparency = 1
-		textLabel.TextSize = 12
+		textLabel.TextSize = 13
 		textLabel.TextWrapped = true
 		textLabel.TextXAlignment = Enum.TextXAlignment.Left
 		textLabel.AutomaticSize = Enum.AutomaticSize.Y
@@ -1338,7 +1338,7 @@ function NullUI:Notify(opts)
 
 		Tween(card, { BackgroundTransparency = 1 }, 0.16)
 		Tween(stroke, { Transparency = 1 }, 0.16)
-		Tween(scale, { Scale = 0.79 }, 0.18, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
+		Tween(scale, { Scale = 0.97 }, 0.18, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
 		Tween(icon, { ImageTransparency = 1 }, 0.16)
 		Tween(titleLabel, { TextTransparency = 1 }, 0.16)
 		if textLabel then Tween(textLabel, { TextTransparency = 1 }, 0.16) end
