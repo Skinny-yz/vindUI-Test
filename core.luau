@@ -1055,7 +1055,7 @@ local function GetNotifyHolder()
 	holder.Name = "NotificationHolder"
 	holder.AnchorPoint = Vector2.new(1, 1)
 	holder.Position = UDim2.new(1, -20, 1, -20)
-	holder.Size = UDim2.new(0, 280, 1, -40)
+	holder.Size = UDim2.new(0, 308, 1, -40)
 	holder.BackgroundTransparency = 1
 	holder.ZIndex = Z.Toast
 	holder.Parent = root
@@ -1067,12 +1067,19 @@ local function GetNotifyHolder()
 	layout.Padding = UDim.new(0, 10)
 	layout.Parent = holder
 	holder.ClipsDescendants = true
+	-- Reserve room for the outside half of rounded strokes on every edge.
+	local safePadding = Instance.new("UIPadding")
+	safePadding.PaddingLeft = UDim.new(0, 4)
+	safePadding.PaddingRight = UDim.new(0, 4)
+	safePadding.PaddingTop = UDim.new(0, 4)
+	safePadding.PaddingBottom = UDim.new(0, 4)
+	safePadding.Parent = holder
 
 	LibJanitor:Add(RunService.Heartbeat:Connect(function()
 		if not holder.Parent then return end
 		local s = GetUIScale()
 		local view = ViewportSize()
-		holder.Size = UDim2.fromOffset(math.max(1, math.min(280, view.X / s - 40)), math.max(1, view.Y / s - 40))
+		holder.Size = UDim2.fromOffset(math.max(1, math.min(308, view.X / s - 40)), math.max(1, view.Y / s - 40))
 		local used, count = 0, 0
 		local function fullHeight(card)
 			local anim = card:FindFirstChildOfClass("UIScale")
@@ -1092,7 +1099,7 @@ local function GetNotifyHolder()
 				local h = fullHeight(entry.Card)
 				if h <= 0 then break end
 				local needed = h + (count > 0 and 10 * s or 0)
-				if used + needed > holder.AbsoluteSize.Y then break end
+				if used + needed > holder.AbsoluteSize.Y - 8 * s then break end
 				table.remove(NotificationQueue, 1)
 				entry.Start()
 				used += needed
@@ -1124,7 +1131,7 @@ function NullUI:Notify(opts)
 	opts = opts or {}
 	local title      = opts.Title or "Notification"
 	local text       = opts.Text or ""
-	local duration   = opts.Duration or 4
+	local duration   = math.max(0.1, tonumber(opts.Duration) or 4)
 	local notifyType = opts.Type or "info"
 	local color      = opts.Color or NotifyColors[notifyType] or NullUI.Theme.Accent
 	local iconName   = opts.Icon or NotifyIcons[notifyType] or NotifyIcons.info
@@ -1150,25 +1157,25 @@ function NullUI:Notify(opts)
 	local stroke = Stroke(card, Color3.new(1, 1, 1), 1, 1)
 	local notificationAcrylic = nil
 	local scale = Instance.new("UIScale")
-	scale.Scale = 0.88
+	scale.Scale = 0.977
 	scale.Parent = card
 
 	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, 10)
-	padding.PaddingBottom = UDim.new(0, 10)
-	padding.PaddingLeft = UDim.new(0, 10)
-	padding.PaddingRight = UDim.new(0, 10)
+	padding.PaddingTop = UDim.new(0, 14)
+	padding.PaddingBottom = UDim.new(0, 14)
+	padding.PaddingLeft = UDim.new(0, 14)
+	padding.PaddingRight = UDim.new(0, 14)
 	padding.Parent = card
 
 	local layout = Instance.new("UIListLayout")
-	layout.Padding = UDim.new(0, 6)
+	layout.Padding = UDim.new(0, 8)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = card
 
 	local headerRow = Instance.new("Frame")
 	headerRow.BackgroundTransparency = 1
-	headerRow.AutomaticSize = Enum.AutomaticSize.XY
-	headerRow.Size = UDim2.new(0, 0, 0, 0)
+	headerRow.AutomaticSize = Enum.AutomaticSize.Y
+	headerRow.Size = UDim2.new(1, 0, 0, 20)
 	headerRow.LayoutOrder = 1
 	headerRow.ZIndex = Z.Toast + 1
 	headerRow.Parent = card
@@ -1185,7 +1192,7 @@ function NullUI:Notify(opts)
 	icon.Image = ResolveIcon(iconName)
 	icon.ImageColor3 = color
 	icon.ImageTransparency = 1
-	icon.Size = UDim2.fromOffset(14, 14)
+	icon.Size = UDim2.fromOffset(18, 18)
 	icon.LayoutOrder = 1
 	icon.ZIndex = Z.Toast + 1
 	icon.Parent = headerRow
@@ -1198,8 +1205,9 @@ function NullUI:Notify(opts)
 	titleLabel.TextTransparency = 1
 	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-	titleLabel.AutomaticSize = Enum.AutomaticSize.XY
-	titleLabel.Size = UDim2.fromOffset(0, 14)
+	titleLabel.AutomaticSize = Enum.AutomaticSize.Y
+	titleLabel.TextWrapped = true
+	titleLabel.Size = UDim2.new(1, -25, 0, 20)
 	titleLabel.LayoutOrder = 2
 	titleLabel.ZIndex = Z.Toast + 1
 	titleLabel.Parent = headerRow
@@ -1234,7 +1242,7 @@ function NullUI:Notify(opts)
 		actionsRow.Parent = card
 
 		local actionsLayout = Instance.new("UIListLayout")
-		actionsLayout.FillDirection = Enum.FillDirection.Horizontal
+		actionsLayout.FillDirection = Enum.FillDirection.Vertical
 		actionsLayout.Padding = UDim.new(0, 6)
 		actionsLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		actionsLayout.Parent = actionsRow
@@ -1246,8 +1254,8 @@ function NullUI:Notify(opts)
 			btn.BackgroundTransparency = 1
 			btn.BorderSizePixel = 0
 			btn.Text = ""
-			btn.AutomaticSize = Enum.AutomaticSize.X
-			btn.Size = UDim2.fromOffset(0, 22)
+			btn.AutomaticSize = Enum.AutomaticSize.None
+			btn.Size = UDim2.new(1, 0, 0, 28)
 			btn.LayoutOrder = i
 			btn.ZIndex = Z.Toast + 1
 			btn.Parent = actionsRow
@@ -1266,8 +1274,9 @@ function NullUI:Notify(opts)
 			lbl.TextColor3 = color
 			lbl.TextTransparency = 1
 			lbl.TextSize = 12
-			lbl.AutomaticSize = Enum.AutomaticSize.X
-			lbl.Size = UDim2.fromOffset(0, 22)
+			lbl.AutomaticSize = Enum.AutomaticSize.None
+			lbl.TextTruncate = Enum.TextTruncate.AtEnd
+			lbl.Size = UDim2.new(1, 0, 1, 0)
 			lbl.ZIndex = Z.Toast + 2
 			lbl.Parent = btn
 
@@ -1290,7 +1299,7 @@ function NullUI:Notify(opts)
 	barHolder.BackgroundColor3 = Color3.new(1, 1, 1)
 	barHolder.BackgroundTransparency = 1
 	barHolder.BorderSizePixel = 0
-	barHolder.Size = UDim2.new(1, 0, 0, 3)
+	barHolder.Size = UDim2.new(1, 0, 0, 2)
 	barHolder.LayoutOrder = 4
 	barHolder.ZIndex = Z.Toast + 1
 	barHolder.Parent = card
@@ -1327,7 +1336,7 @@ function NullUI:Notify(opts)
 
 		Tween(card, { BackgroundTransparency = 1 }, 0.16)
 		Tween(stroke, { Transparency = 1 }, 0.16)
-		Tween(scale, { Scale = 0.9 }, 0.18, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
+		Tween(scale, { Scale = 0.97 }, 0.18, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
 		Tween(icon, { ImageTransparency = 1 }, 0.16)
 		Tween(titleLabel, { TextTransparency = 1 }, 0.16)
 		if textLabel then Tween(textLabel, { TextTransparency = 1 }, 0.16) end
@@ -1353,8 +1362,8 @@ function NullUI:Notify(opts)
 		if #NotificationHistory > 100 then table.remove(NotificationHistory, 1) end
 		card.Visible = true
 		notificationAcrylic = CreateWindowAcrylic(card)
-	Tween(card, { BackgroundTransparency = 0.25 }, 0.28)
-	Tween(stroke, { Transparency = 0.82 }, 0.28)
+	Tween(card, { BackgroundTransparency = 0.08 }, 0.28)
+	Tween(stroke, { Transparency = 0.88 }, 0.28)
 	Tween(scale, { Scale = 1 }, 0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 	Tween(icon, { ImageTransparency = 0 }, 0.28)
 	Tween(titleLabel, { TextTransparency = 0 }, 0.28)
