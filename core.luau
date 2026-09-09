@@ -1059,6 +1059,10 @@ local function GetNotifyHolder()
 	holder.BackgroundTransparency = 1
 	holder.ZIndex = Z.Toast
 	holder.Parent = root
+	local notificationScale = Instance.new("UIScale")
+	notificationScale.Name = "NotificationScreenScale"
+	notificationScale.Scale = 1 / math.max(GetUIScale(), 0.01)
+	notificationScale.Parent = holder
 
 	local layout = Instance.new("UIListLayout")
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1077,7 +1081,10 @@ local function GetNotifyHolder()
 
 	LibJanitor:Add(RunService.Heartbeat:Connect(function()
 		if not holder.Parent then return end
-		local s = GetUIScale()
+		local rootScale = math.max(GetUIScale(), 0.01)
+		notificationScale.Scale = 1 / rootScale
+		holder.Position = UDim2.new(1, -20 / rootScale, 1, -20 / rootScale)
+		local s = 1
 		local view = ViewportSize()
 		holder.Size = UDim2.fromOffset(math.max(1, math.min(308, view.X / s - 40)), math.max(1, view.Y / s - 40))
 		local used, count = 0, 0
@@ -1330,7 +1337,7 @@ function NullUI:Notify(opts)
 		dismissed = true
 		if not card.Visible then card:Destroy(); return end
 
-		local currentHeight = card.AbsoluteSize.Y / (GetUIScale() * math.max(scale.Scale, 0.01))
+		local currentHeight = card.AbsoluteSize.Y / math.max(scale.Scale, 0.01)
 		card.AutomaticSize = Enum.AutomaticSize.None
 		card.Size = UDim2.new(1, 0, 0, currentHeight)
 
