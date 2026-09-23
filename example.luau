@@ -3,6 +3,18 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 getgenv().CONFIG = {
+    -- Optional startup intro. Set Enabled = false to skip it completely.
+    Intro = {
+        Enabled = true,
+        Title = "Vind UI Reborn",
+        Eyebrow = "YOUR WORKSPACE, REIMAGINED",
+        Subtitle = "Everything you need. Just the way you like it.",
+        Logo = "Lucide:sparkles",
+        Accent = Color3.fromRGB(151, 167, 255),
+        Duration = 2.6,
+        Skippable = true,
+        ReducedMotion = false,
+    },
 	-- Choose which integration panels to show. Restart after changing these.
 	Integrations = {
 		Spotify = false,
@@ -28,6 +40,9 @@ local VindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Skinny
 VindUI:PreloadIcons({ "Lucide", "Material", "Phosphor", "SF" })
 VindUI:SetScaleRange(0.75, 1.35) -- Desktop
 VindUI:SetMobileScaleReference(getgenv().CONFIG.MobileScaleReference)
+
+-- Remove this call, or disable it in CONFIG, to use the UI without an intro.
+VindUI:ShowIntro(getgenv().CONFIG.Intro):Wait()
 
 local TOGGLE_KEY = Enum.KeyCode.RightShift
 local Tabs = {}
@@ -1231,27 +1246,6 @@ end})
 Window:SelectTab("Components")
 Window:Open()
 
--- New elements: values with Flag are included in saved / copied configurations.
-local New = Window:AddTab({Name = "New Elements", Icon = "Lucide:blocks"})
-New:AddSegmentedControl({Text="Mode", Options={"Normal","Fast","Custom"}, Default="Normal", Flag="new_mode"})
-New:AddRangeSlider({Text="Range", Min=0, Max=100, Step=1, Default={20,80}, Flag="new_range"})
-New:AddNumberInput({Text="Amount", Min=0, Max=1000, Step=5, Default=25, Flag="new_amount"})
-New:AddListEditor({Text="Names", Default={"Alpha","Beta"}, Flag="new_names"})
-New:AddRadioGroup({Text="Quality", Options={"Low","Medium","High"}, Default="High", Flag="new_quality"})
-New:AddCheckboxGroup({Text="Visible details", Options={"Names","Distance","Health"}, Default={"Names","Health"}, Flag="new_details"})
-local Progress = New:AddProgressBar({Text="Progress", Default=35, Min=0, Max=100})
-New:AddButtonGroup({Buttons={
- {Text="Advance", Callback=function() Progress:Set(math.min(100,Progress:Get()+10)) end},
- {Text="Reset", Callback=function() Progress:Set(0) end},
-}})
-New:AddImageCard({Title="Profile preview", Description="Image with an action below.", Image="rbxthumb://type=AvatarHeadShot&id="..LocalPlayer.UserId.."&w=420&h=420", Height=140, Actions={
- {Text="Preview notification", Callback=function() notify("Image card", "Action clicked.") end},
-}})
-New:AddMultiLineTextbox({Text="Notes / JSON", Height=110, Default='{\n  "enabled": true\n}', Flag="new_notes", Placeholder="Enter multiple lines..."})
-New:AddButton({Text="Copy config as JSON", Icon="Lucide:copy", Callback=function()
- local ok, result = VindUI:CopyConfigJSON()
- notify(ok and "Copied" or "Copy unavailable", ok and "Configuration copied as JSON." or tostring(result))
-end})
 -- Callback error handling demo (requires the updated full.luau).
 local CallbackDemo = Window:AddTab({Name = "Callback Handler", Icon = "Lucide:shield-alert"})
 CallbackDemo:AddParagraph({Title = "Protected callbacks", Text = "Errors show a red Callback Error notification. Other controls keep working. The full traceback is available in the console."})
@@ -1261,8 +1255,8 @@ end})
 CallbackDemo:AddToggle({Text = "Test toggle error", Default = false, Callback = function(enabled)
     if enabled then error("Intentional toggle callback error.") end
 end})
-local HandlerNumber = CallbackDemo:AddNumberInput({Text = "Test OnChanged", Min = 0, Max = 10, Default = 0})
-HandlerNumber:OnChanged(function(value)
+local HandlerSlider = CallbackDemo:AddSlider({Text = "Test OnChanged", Min = 0, Max = 10, Default = 0})
+HandlerSlider:OnChanged(function(value)
     if value == 3 then error("Intentional OnChanged error at value 3.") end
 end)
 CallbackDemo:AddButton({Text = "Test successful callback", Callback = function()
