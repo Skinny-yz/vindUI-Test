@@ -7,10 +7,10 @@ getgenv().CONFIG = {
     Intro = {
         Enabled = true,
         Title = "Vind UI Reborn",
-        Eyebrow = "YOUR WORKSPACE, REIMAGINED",
-        Subtitle = "Everything you need. Just the way you like it.",
+        Eyebrow = "WELCOME BACK",
+        Subtitle = "Your workspace is almost ready.",
         Logo = "Lucide:sparkles",
-        Accent = Color3.fromRGB(151, 167, 255),
+        -- Colors and fonts inherit the UI theme.
         Duration = 2.6,
         Skippable = true,
         ReducedMotion = false,

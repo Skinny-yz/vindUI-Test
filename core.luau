@@ -1025,12 +1025,12 @@ function NullUI:ShowIntro(options)
  local duration = math.clamp(tonumber(opts.Duration) or 2.6, 0.2, 60)
  local motion = opts.ReducedMotion ~= true
  local accent = opts.Accent or self.Theme.Accent
- local background = opts.BackgroundColor or Color3.fromRGB(13, 16, 24)
- local foreground = opts.TextColor or Color3.fromRGB(245, 247, 255)
- local muted = opts.SubtitleColor or Color3.fromRGB(155, 165, 187)
- local width = math.clamp(tonumber(opts.Width) or 440, 280, 760)
- local height = math.clamp(tonumber(opts.Height) or 272, 248, 440)
- local radius = math.clamp(tonumber(opts.CornerRadius) or 24, 0, 64)
+ local background = opts.BackgroundColor or self.Theme.Background
+ local foreground = opts.TextColor or self.Theme.Text
+ local muted = opts.SubtitleColor or self.Theme.TextDim
+ local width = math.clamp(tonumber(opts.Width) or 360, 300, 760)
+ local height = math.clamp(tonumber(opts.Height) or 174, 174, 440)
+ local radius = math.clamp(tonumber(opts.CornerRadius) or self.Theme.CornerRadius, 0, 64)
  local tweens = {}
  local function animate(object, props, seconds)
   if tweens[object] then tweens[object]:Cancel(); tweens[object] = nil end
@@ -1079,7 +1079,7 @@ function NullUI:ShowIntro(options)
  end
  local dim = frame(gui, "Backdrop", Color3.new(0,0,0), 1, UDim2.new(), UDim2.fromScale(1,1))
  dim.Active = opts.BlockInput ~= false
- animate(dim, {BackgroundTransparency = 1 - math.clamp(tonumber(opts.Dim) or 0.35, 0, 1)}, .35)
+ animate(dim, {BackgroundTransparency = 1 - math.clamp(tonumber(opts.Dim) or 0.12, 0, 1)}, .35)
  local anchor = frame(gui, "Anchor", background, 1, UDim2.fromScale(.5,.5), UDim2.fromOffset(width,height), 2)
  anchor.AnchorPoint = Vector2.new(.5,.5)
  local fit = Instance.new("UIScale"); fit.Parent = anchor
@@ -1091,19 +1091,18 @@ function NullUI:ShowIntro(options)
  resize()
  local group = Instance.new("CanvasGroup")
  group.Name = "IntroCard"; group.BackgroundColor3 = background
- group.BackgroundTransparency = math.clamp(tonumber(opts.Transparency) or .04,0,1)
+ group.BackgroundTransparency = math.clamp(tonumber(opts.Transparency) or .06,0,1)
  group.BorderSizePixel = 0; group.Size = UDim2.fromScale(1,1); group.ZIndex = 2
  group.GroupTransparency = motion and 1 or 0; group.Parent = anchor
- Corner(group,radius); Stroke(group,accent,1,.62)
+ Corner(group,radius); Stroke(group,foreground,1,.86)
  local scale = Instance.new("UIScale"); scale.Scale = motion and .94 or 1; scale.Parent = group
  group.AnchorPoint = Vector2.new(.5,.5); group.Position = UDim2.fromScale(.5,.5)
- local gradient = Instance.new("UIGradient")
- gradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, background:Lerp(accent,.13)),ColorSequenceKeypoint.new(1,background)})
- gradient.Rotation = 35; gradient.Parent = group
- local glow = frame(group,"Halo",accent,.94,UDim2.new(.5,-100,0,-92),UDim2.fromOffset(200,200),3)
- Corner(glow,100)
- local inner = frame(group,"HaloInner",accent,.94,UDim2.new(.5,-70,0,-62),UDim2.fromOffset(140,140),3)
- Corner(inner,70)
+ -- Keep decoration in its own layer: a gradient on CanvasGroup tints all text.
+ local surface = frame(group,"SurfaceWash",self.Theme.Surface,.3,UDim2.new(),UDim2.fromScale(1,1),2)
+ Corner(surface,radius)
+ local wash = Instance.new("UIGradient")
+ wash.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,.15),NumberSequenceKeypoint.new(1,1)})
+ wash.Rotation = 90; wash.Parent = surface
  local function label(name, text, size, color, y, h)
   local l = Instance.new("TextLabel"); l.Name = name; l.BackgroundTransparency = 1
   l.Text = tostring(text); l.FontFace = opts.Font or NullUI.Theme.Font; l.TextSize = size; l.TextColor3 = color
@@ -1111,22 +1110,27 @@ function NullUI:ShowIntro(options)
   l.Position = UDim2.fromOffset(28,y); l.Size = UDim2.new(1,-56,0,h); l.ZIndex = 5; l.Parent = group
   return l
  end
- local logo = frame(group,"LogoTile",accent,.85,UDim2.new(.5,-28,0,31),UDim2.fromOffset(56,56),4)
- Corner(logo,16); Stroke(logo,accent,1,.55)
+ local logo = frame(group,"LogoTile",foreground,0,UDim2.fromOffset(24,28),UDim2.fromOffset(46,46),4)
+ Corner(logo,14)
  local icon = Instance.new("ImageLabel"); icon.Name = "Logo"; icon.BackgroundTransparency = 1
  icon.Image = ResolveIcon(opts.Logo or opts.Icon or "Lucide:sparkles")
- icon.ImageColor3 = opts.LogoColor or accent; icon.ScaleType = Enum.ScaleType.Fit
- icon.Position = UDim2.fromOffset(13,13); icon.Size = UDim2.fromOffset(30,30); icon.ZIndex = 5; icon.Parent = logo
- label("Eyebrow",opts.Eyebrow or "WELCOME TO",10,muted,103,15)
- label("Title",opts.Title or "Vind UI",math.clamp(tonumber(opts.TitleSize) or 26,14,40),foreground,122,38)
- label("Subtitle",opts.Subtitle or "A space built around you.",13,muted,163,36)
- local track = frame(group,"ProgressTrack",foreground,.93,UDim2.new(0,28,1,-49),UDim2.new(1,-56,0,3),4)
- Corner(track,3); track.Visible = opts.ShowProgress ~= false
- local fill = frame(track,"ProgressFill",accent,0,UDim2.new(),UDim2.fromScale(0,1),5); Corner(fill,3)
- local fillGradient = Instance.new("UIGradient"); fillGradient.Color = ColorSequence.new(accent:Lerp(Color3.new(1,1,1),.4),accent); fillGradient.Parent = fill
- local status = label("Status",opts.Status or "Preparing your workspace",11,muted,height-36,17)
- status.TextXAlignment = Enum.TextXAlignment.Left; status.Size = UDim2.new(1,-100,0,17)
- local percent = label("Percent","0%",11,accent,height-36,17)
+ icon.ImageColor3 = opts.LogoColor or background; icon.ScaleType = Enum.ScaleType.Fit
+ icon.Position = UDim2.fromOffset(10,10); icon.Size = UDim2.fromOffset(26,26); icon.ZIndex = 5; icon.Parent = logo
+ local eyebrow = label("Eyebrow",opts.Eyebrow or "WELCOME BACK",10,muted,24,14)
+ eyebrow.Position = UDim2.fromOffset(84,24); eyebrow.Size = UDim2.new(1,-150,0,14); eyebrow.TextXAlignment = Enum.TextXAlignment.Left
+ local title = label("Title",opts.Title or "Vind UI",math.clamp(tonumber(opts.TitleSize) or 19,14,32),foreground,42,28)
+ title.Position = UDim2.fromOffset(84,42); title.Size = UDim2.new(1,-108,0,28); title.TextXAlignment = Enum.TextXAlignment.Left
+ local subtitle = label("Subtitle",opts.Subtitle or "Everything is right where you left it.",12,muted,86,32)
+ subtitle.Position = UDim2.fromOffset(24,84); subtitle.Size = UDim2.new(1,-48,0,32); subtitle.TextXAlignment = Enum.TextXAlignment.Left
+ subtitle.FontFace = opts.Font or NullUI.Theme.FontRegular
+ local track = frame(group,"ProgressTrack",foreground,.92,UDim2.new(0,24,1,-18),UDim2.new(1,-48,0,2),4)
+ Corner(track,2); track.Visible = opts.ShowProgress ~= false
+ local fill = frame(track,"ProgressFill",accent,0,UDim2.new(),UDim2.fromScale(0,1),5); Corner(fill,2)
+ local status = label("Status",opts.Status or "Getting things ready",11,muted,height-46,17)
+ status.Position = UDim2.fromOffset(24,height-46); status.TextXAlignment = Enum.TextXAlignment.Left; status.Size = UDim2.new(1,-90,0,17)
+ status.FontFace = opts.Font or NullUI.Theme.FontRegular
+ local percent = label("Percent","0%",11,foreground,height-46,17)
+ percent.Position = UDim2.new(1,-60,0,height-46); percent.Size = UDim2.fromOffset(36,17)
  percent.TextXAlignment = Enum.TextXAlignment.Right; percent.Visible = opts.ShowProgress ~= false
  function api:SetStatus(text)
   if not finished then status.Text = tostring(text) end
@@ -1154,7 +1158,7 @@ function NullUI:ShowIntro(options)
  if opts.Skippable == true then
   local skip = Instance.new("TextButton"); skip.Name = "Skip"; skip.Text = opts.SkipText or "Skip"
   skip.FontFace = opts.Font or self.Theme.FontRegular; skip.TextSize = 11; skip.TextColor3 = muted
-  skip.BackgroundTransparency = 1; skip.Size = UDim2.fromOffset(60,36); skip.Position = UDim2.new(1,-72,0,8)
+  skip.BackgroundTransparency = 1; skip.Size = UDim2.fromOffset(44,28); skip.Position = UDim2.new(1,-60,0,16)
   skip.ZIndex = 6; skip.Parent = group
   jan:Add(skip.Activated:Connect(function() api:Complete(opts.CompleteText,"skipped") end))
  end

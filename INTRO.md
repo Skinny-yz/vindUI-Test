@@ -56,12 +56,12 @@ No modo manual, chame Complete() ou Destroy() em todos os caminhos de encerramen
 | TextColor / SubtitleColor | Cores dos textos; Color3 |
 | LogoColor | Cor da imagem; use Color3.new(1,1,1) para preservar um logo colorido |
 | Font | Font usado pelos textos; usa a fonte do tema por padrao |
-| Width / Height | 440 / 272; limites 280–760 e 248–440 |
+| Width / Height | 360 / 174; limites 300–760 e 174–440 |
 | Scale | 1; limites 0,25–2; ajustado para caber na tela |
-| CornerRadius | 24; de 0 a 64 |
-| Transparency | 0,04; transparencia do cartao, de 0 a 1 |
-| Dim | 0,35; escurecimento do fundo, de 0 a 1 |
-| TitleSize | 26; de 14 a 40 |
+| CornerRadius | CornerRadius do tema; de 0 a 64 |
+| Transparency | 0,06; transparencia do cartao, de 0 a 1 |
+| Dim | 0,12; escurecimento do fundo, de 0 a 1 |
+| TitleSize | 19; de 14 a 32 |
 | Duration | 2,6 segundos; de 0,2 a 60 |
 | AutoClose | true; false exige Complete ou Destroy |
 | ShowProgress | true; false esconde barra e porcentagem |
@@ -90,3 +90,5 @@ Substitua core.luau, full.luau e example.luau. Mescle tests com os testes existe
 Compilacao Luau, testes de intro (core e full), callbacks e escala passaram. O teste geral smoke continua tendo uma falha preexistente na versao original. A aparencia ainda nao foi validada dentro do Roblox real.
 
 O bundle de integracoes original foi preservado: os fontes dos modulos ja divergiam do bundle no repositorio. Evite regerar integracoes como parte desta alteracao sem revisar essas diferencas.
+
+Visual revisado: cartao compacto com logo a esquerda, tipografia e cores herdadas do tema, barra fina e fundo discretamente escurecido. O degradê fica exclusivamente na camada decorativa, sem tingir textos e logo.
