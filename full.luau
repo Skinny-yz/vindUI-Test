@@ -1064,7 +1064,7 @@ function NullUI:ShowIntro(options)
  end
  local gui = Instance.new("ScreenGui")
  gui.Name = "VindIntro"
- gui.IgnoreGuiInset = true
+ gui.IgnoreGuiInset = false
  gui.ResetOnSpawn = false
  gui.DisplayOrder = (self._Root.DisplayOrder or 9999) + 1
  gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -1091,20 +1091,38 @@ function NullUI:ShowIntro(options)
   fit.Scale = math.min(math.clamp(tonumber(opts.Scale) or 1, .25, 2), math.max(.05,(viewport.X-32)/width), math.max(.05,(viewport.Y-32)/height))
  end
  resize()
+ -- Layered shadows stay outside the clipped glass card.
+ local shadow = frame(anchor,"SoftShadow",Color3.new(0,0,0),.94,UDim2.fromOffset(-10,-4),UDim2.new(1,20,1,20),1)
+ Corner(shadow,radius+10)
+ local shadowInner = frame(anchor,"ContactShadow",Color3.new(0,0,0),.9,UDim2.fromOffset(-3,3),UDim2.new(1,6,1,6),1)
+ Corner(shadowInner,radius+3)
  local group = Instance.new("CanvasGroup")
  group.Name = "IntroCard"; group.BackgroundColor3 = background
- group.BackgroundTransparency = math.clamp(tonumber(opts.Transparency) or .06,0,1)
+ group.BackgroundTransparency = math.clamp(tonumber(opts.Transparency) or .22,0,1)
  group.BorderSizePixel = 0; group.Size = UDim2.fromScale(1,1); group.ZIndex = 2
  group.GroupTransparency = motion and 1 or 0; group.Parent = anchor
- Corner(group,radius); Stroke(group,foreground,1,.86)
+ Corner(group,radius)
+ local outline = Stroke(group,foreground,1,.78)
+ local outlineGradient = Instance.new("UIGradient")
+ outlineGradient.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,.05),NumberSequenceKeypoint.new(.5,.65),NumberSequenceKeypoint.new(1,.35)})
+ outlineGradient.Rotation = 65; outlineGradient.Parent = outline
+ local acrylic
+ if opts.UseBlur ~= false then
+  acrylic = CreateWindowAcrylic(group)
+  jan:Add(acrylic)
+ end
  local scale = Instance.new("UIScale"); scale.Scale = motion and .94 or 1; scale.Parent = group
  group.AnchorPoint = Vector2.new(.5,.5); group.Position = UDim2.fromScale(.5,.5)
  -- Keep decoration in its own layer: a gradient on CanvasGroup tints all text.
- local surface = frame(group,"SurfaceWash",self.Theme.Surface,.3,UDim2.new(),UDim2.fromScale(1,1),2)
+ local surface = frame(group,"SurfaceWash",self.Theme.Surface,.82,UDim2.new(),UDim2.fromScale(1,1),2)
  Corner(surface,radius)
  local wash = Instance.new("UIGradient")
  wash.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,.15),NumberSequenceKeypoint.new(1,1)})
  wash.Rotation = 90; wash.Parent = surface
+ local highlight = frame(group,"GlassHighlight",foreground,.78,UDim2.new(0,radius,0,0),UDim2.new(1,-radius*2,0,1),3)
+ local highlightGradient = Instance.new("UIGradient")
+ highlightGradient.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,1),NumberSequenceKeypoint.new(.35,.1),NumberSequenceKeypoint.new(1,1)})
+ highlightGradient.Parent = highlight
  local function label(name, text, size, color, y, h)
   local l = Instance.new("TextLabel"); l.Name = name; l.BackgroundTransparency = 1
   l.Text = tostring(text); l.FontFace = opts.Font or NullUI.Theme.Font; l.TextSize = size; l.TextColor3 = color
@@ -1113,7 +1131,7 @@ function NullUI:ShowIntro(options)
   return l
  end
  local logo = frame(group,"LogoTile",foreground,0,UDim2.fromOffset(24,28),UDim2.fromOffset(46,46),4)
- Corner(logo,14)
+ Corner(logo,14); Stroke(logo,foreground,1,.7)
  local icon = Instance.new("ImageLabel"); icon.Name = "Logo"; icon.BackgroundTransparency = 1
  icon.Image = ResolveIcon(opts.Logo or opts.Icon or "Lucide:sparkles")
  icon.ImageColor3 = opts.LogoColor or background; icon.ScaleType = Enum.ScaleType.Fit
@@ -1128,6 +1146,12 @@ function NullUI:ShowIntro(options)
  local track = frame(group,"ProgressTrack",foreground,.92,UDim2.new(0,24,1,-18),UDim2.new(1,-48,0,2),4)
  Corner(track,2); track.Visible = opts.ShowProgress ~= false
  local fill = frame(track,"ProgressFill",accent,0,UDim2.new(),UDim2.fromScale(0,1),5); Corner(fill,2)
+ fill.ClipsDescendants = true
+ local sheen = frame(fill,"ProgressSheen",Color3.new(1,1,1),.25,UDim2.fromScale(-.4,0),UDim2.fromScale(.35,1),6)
+ local sheenGradient = Instance.new("UIGradient")
+ sheenGradient.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,1),NumberSequenceKeypoint.new(.5,.15),NumberSequenceKeypoint.new(1,1)})
+ sheenGradient.Parent = sheen
+ sheen.Visible = motion and opts.Shimmer ~= false
  local status = label("Status",opts.Status or "Getting things ready",11,muted,height-46,17)
  status.Position = UDim2.fromOffset(24,height-46); status.TextXAlignment = Enum.TextXAlignment.Left; status.Size = UDim2.new(1,-90,0,17)
  status.FontFace = opts.Font or NullUI.Theme.FontRegular
@@ -1148,6 +1172,7 @@ function NullUI:ShowIntro(options)
   if text ~= nil then self:SetStatus(text) end
   return self
  end
+ local shimmerTime = 0
  local exitElapsed = 0
  local exitReason = "completed"
  function api:Complete(text, reason)
@@ -1173,6 +1198,8 @@ function NullUI:ShowIntro(options)
    exitElapsed += dt
    if exitElapsed >= .15 and not exiting then
     exiting = true
+    if acrylic then acrylic:Destroy() end
+    animate(shadow,{BackgroundTransparency=1},.28); animate(shadowInner,{BackgroundTransparency=1},.28)
     animate(group,{GroupTransparency=1},.28); animate(scale,{Scale=.97},.28); animate(dim,{BackgroundTransparency=1},.28)
    end
    if exitElapsed >= .45 then finish(exitReason,true) end

@@ -59,7 +59,7 @@ No modo manual, chame Complete() ou Destroy() em todos os caminhos de encerramen
 | Width / Height | 360 / 174; limites 300–760 e 174–440 |
 | Scale | 1; limites 0,25–2; ajustado para caber na tela |
 | CornerRadius | CornerRadius do tema; de 0 a 64 |
-| Transparency | 0,06; transparencia do cartao, de 0 a 1 |
+| Transparency | 0,22; transparencia do cartao, de 0 a 1 |
 | Dim | 0,12; escurecimento do fundo, de 0 a 1 |
 | TitleSize | 19; de 14 a 32 |
 | Duration | 2,6 segundos; de 0,2 a 60 |
@@ -92,3 +92,11 @@ Compilacao Luau, testes de intro (core e full), callbacks e escala passaram. O t
 O bundle de integracoes original foi preservado: os fontes dos modulos ja divergiam do bundle no repositorio. Evite regerar integracoes como parte desta alteracao sem revisar essas diferencas.
 
 Visual revisado: cartao compacto com logo a esquerda, tipografia e cores herdadas do tema, barra fina e fundo discretamente escurecido. O degradê fica exclusivamente na camada decorativa, sem tingir textos e logo.
+
+## Acabamento em vidro / blur
+
+A intro usa o mesmo acrylic das janelas da UI. UseBlur = true (padrao) habilita o efeito, respeitando VindUI.Config.Blur. UseBlur = false desativa o blur da intro. Transparency = 0.22 define a transparencia do cartao. Shimmer = true (padrao) ativa o brilho discreto na barra; false o desativa. ReducedMotion tambem desativa esse brilho animado.
+
+Sombra em duas camadas, reflexo superior fino e borda suave mantem as cores do tema e o contraste do texto. O efeito de blur e removido no fechamento e no unload, sem desativar o acrylic de outras janelas. O efeito visual depende do suporte grafico do Roblox ao acrylic da biblioteca.
+
+Testes simulados adicionais confirmaram a ativacao e limpeza do blur e o modo UseBlur = false; a renderizacao real desta revisao ainda precisa ser conferida no Roblox.

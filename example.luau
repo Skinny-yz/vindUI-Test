@@ -11,6 +11,9 @@ getgenv().CONFIG = {
         Subtitle = "Your workspace is almost ready.",
         Logo = "Lucide:sparkles",
         -- Colors and fonts inherit the UI theme.
+        UseBlur = true,
+        Transparency = 0.22,
+        Shimmer = true,
         Duration = 2.6,
         Skippable = true,
         ReducedMotion = false,

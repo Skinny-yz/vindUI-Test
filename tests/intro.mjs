@@ -5,6 +5,8 @@ for (const file of ['core.luau', 'full.luau']) {
 local UI=(function()
 ${fs.readFileSync(file,'utf8')}
 end)()
+workspace.CurrentCamera.CFrame.ToObjectSpace=function(_,cf)return cf end
+workspace.CurrentCamera.GetRenderCFrame=function()return workspace.CurrentCamera.CFrame end
 local heartbeat=game:GetService('RunService').Heartbeat
 local calls=0
 local reason
@@ -19,6 +21,9 @@ assert(intro.Instance.Name=='VindIntro' and not intro:IsFinished())
 local card=intro.Instance:FindFirstChild('Anchor'):FindFirstChild('IntroCard')
 assert(card:FindFirstChild('Title').Text=='Custom')
 assert(card.BackgroundColor3==UI.Theme.Background)
+assert(card.BackgroundTransparency==.22)
+assert(card:FindFirstChild('GlassHighlight')~=nil)
+assert(game:GetService('Lighting'):FindFirstChild('NullUI_AcrylicDOF').Enabled==true)
 assert(card:FindFirstChild('Title').TextColor3==UI.Theme.Text)
 assert(card:FindFirstChild('Subtitle').TextColor3==UI.Theme.TextDim)
 assert(card:FindFirstChildOfClass('UIGradient')==nil,'CanvasGroup must not tint text')
@@ -38,6 +43,10 @@ intro:Complete('Done'):Complete('Duplicate')
 heartbeat:Fire(.2);assert(not intro:IsFinished())
 heartbeat:Fire(.3);assert(intro:IsFinished() and calls==1 and reason=='completed' and UI._ActiveIntro==nil)
 intro:Destroy();assert(calls==1)
+assert(game:GetService('Lighting'):FindFirstChild('NullUI_AcrylicDOF').Enabled==false)
+local noBlur=UI:ShowIntro({UseBlur=false,AutoClose=false})
+assert(game:GetService('Lighting'):FindFirstChild('NullUI_AcrylicDOF').Enabled==false)
+noBlur:Destroy()
 local auto=UI:ShowIntro({Duration=.2,ReducedMotion=true,OnComplete=function()calls+=1 end})
 heartbeat:Fire(.1);assert(auto:GetProgress()==.5)
 heartbeat:Fire(.1);assert(auto:IsFinished() and calls==2)
