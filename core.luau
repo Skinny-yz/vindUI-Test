@@ -1014,6 +1014,173 @@ end
 
 local ActivePopupClose = nil
 
+-- Optional, independently scaled startup overlay. No intro is created by default.
+function NullUI:ShowIntro(options)
+ local opts = options or {}
+ if self._ActiveIntro then self._ActiveIntro:Destroy() end
+ local api = {Instance = nil}
+ local finished, closing, elapsed = opts.Enabled == false, false, 0
+ local progress = 0
+ local jan = Janitor.new()
+ local duration = math.clamp(tonumber(opts.Duration) or 2.6, 0.2, 60)
+ local motion = opts.ReducedMotion ~= true
+ local accent = opts.Accent or self.Theme.Accent
+ local background = opts.BackgroundColor or Color3.fromRGB(13, 16, 24)
+ local foreground = opts.TextColor or Color3.fromRGB(245, 247, 255)
+ local muted = opts.SubtitleColor or Color3.fromRGB(155, 165, 187)
+ local width = math.clamp(tonumber(opts.Width) or 440, 280, 760)
+ local height = math.clamp(tonumber(opts.Height) or 272, 248, 440)
+ local radius = math.clamp(tonumber(opts.CornerRadius) or 24, 0, 64)
+ local tweens = {}
+ local function animate(object, props, seconds)
+  if tweens[object] then tweens[object]:Cancel(); tweens[object] = nil end
+  if not motion then for key, value in pairs(props) do object[key] = value end; return end
+  tweens[object] = Tween(object, props, seconds)
+ end
+ local function finish(reason, callback)
+  if finished then return end
+  finished = true
+  for _, tween in pairs(tweens) do tween:Cancel() end
+  table.clear(tweens)
+  jan:Destroy()
+  if self._ActiveIntro == api then self._ActiveIntro = nil end
+  if api.Instance then api.Instance:Destroy() end
+  if callback then SpawnCallback(opts.OnComplete, reason) end
+ end
+ function api:IsFinished() return finished end
+ function api:GetProgress() return progress end
+ function api:Wait()
+  while not finished do RunService.Heartbeat:Wait() end
+  return self
+ end
+ function api:Destroy() finish("destroyed", false) end
+ if finished then
+  function api:SetProgress() return self end
+  function api:SetStatus() return self end
+  function api:Complete() return self end
+  return api
+ end
+ local gui = Instance.new("ScreenGui")
+ gui.Name = "VindIntro"
+ gui.IgnoreGuiInset = true
+ gui.ResetOnSpawn = false
+ gui.DisplayOrder = (self._Root.DisplayOrder or 9999) + 1
+ gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ gui.Parent = self._Root.Parent
+ api.Instance = gui
+ self._ActiveIntro = api
+ jan:Add(self._Root.Destroying:Connect(function() api:Destroy() end))
+ jan:Add(gui.Destroying:Connect(function() finish("destroyed", false) end))
+ local function frame(parent, name, color, transparency, position, size, z)
+  local item = Instance.new("Frame")
+  item.Name = name; item.BackgroundColor3 = color; item.BackgroundTransparency = transparency
+  item.BorderSizePixel = 0; item.Position = position; item.Size = size; item.ZIndex = z or 1; item.Parent = parent
+  return item
+ end
+ local dim = frame(gui, "Backdrop", Color3.new(0,0,0), 1, UDim2.new(), UDim2.fromScale(1,1))
+ dim.Active = opts.BlockInput ~= false
+ animate(dim, {BackgroundTransparency = 1 - math.clamp(tonumber(opts.Dim) or 0.35, 0, 1)}, .35)
+ local anchor = frame(gui, "Anchor", background, 1, UDim2.fromScale(.5,.5), UDim2.fromOffset(width,height), 2)
+ anchor.AnchorPoint = Vector2.new(.5,.5)
+ local fit = Instance.new("UIScale"); fit.Parent = anchor
+ local function resize()
+  local camera = workspace.CurrentCamera
+  local viewport = camera and camera.ViewportSize or Vector2.new(1280,720)
+  fit.Scale = math.min(math.clamp(tonumber(opts.Scale) or 1, .25, 2), math.max(.05,(viewport.X-32)/width), math.max(.05,(viewport.Y-32)/height))
+ end
+ resize()
+ local group = Instance.new("CanvasGroup")
+ group.Name = "IntroCard"; group.BackgroundColor3 = background
+ group.BackgroundTransparency = math.clamp(tonumber(opts.Transparency) or .04,0,1)
+ group.BorderSizePixel = 0; group.Size = UDim2.fromScale(1,1); group.ZIndex = 2
+ group.GroupTransparency = motion and 1 or 0; group.Parent = anchor
+ Corner(group,radius); Stroke(group,accent,1,.62)
+ local scale = Instance.new("UIScale"); scale.Scale = motion and .94 or 1; scale.Parent = group
+ group.AnchorPoint = Vector2.new(.5,.5); group.Position = UDim2.fromScale(.5,.5)
+ local gradient = Instance.new("UIGradient")
+ gradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, background:Lerp(accent,.13)),ColorSequenceKeypoint.new(1,background)})
+ gradient.Rotation = 35; gradient.Parent = group
+ local glow = frame(group,"Halo",accent,.94,UDim2.new(.5,-100,0,-92),UDim2.fromOffset(200,200),3)
+ Corner(glow,100)
+ local inner = frame(group,"HaloInner",accent,.94,UDim2.new(.5,-70,0,-62),UDim2.fromOffset(140,140),3)
+ Corner(inner,70)
+ local function label(name, text, size, color, y, h)
+  local l = Instance.new("TextLabel"); l.Name = name; l.BackgroundTransparency = 1
+  l.Text = tostring(text); l.FontFace = opts.Font or NullUI.Theme.Font; l.TextSize = size; l.TextColor3 = color
+  l.TextWrapped = true; l.TextTruncate = Enum.TextTruncate.AtEnd
+  l.Position = UDim2.fromOffset(28,y); l.Size = UDim2.new(1,-56,0,h); l.ZIndex = 5; l.Parent = group
+  return l
+ end
+ local logo = frame(group,"LogoTile",accent,.85,UDim2.new(.5,-28,0,31),UDim2.fromOffset(56,56),4)
+ Corner(logo,16); Stroke(logo,accent,1,.55)
+ local icon = Instance.new("ImageLabel"); icon.Name = "Logo"; icon.BackgroundTransparency = 1
+ icon.Image = ResolveIcon(opts.Logo or opts.Icon or "Lucide:sparkles")
+ icon.ImageColor3 = opts.LogoColor or accent; icon.ScaleType = Enum.ScaleType.Fit
+ icon.Position = UDim2.fromOffset(13,13); icon.Size = UDim2.fromOffset(30,30); icon.ZIndex = 5; icon.Parent = logo
+ label("Eyebrow",opts.Eyebrow or "WELCOME TO",10,muted,103,15)
+ label("Title",opts.Title or "Vind UI",math.clamp(tonumber(opts.TitleSize) or 26,14,40),foreground,122,38)
+ label("Subtitle",opts.Subtitle or "A space built around you.",13,muted,163,36)
+ local track = frame(group,"ProgressTrack",foreground,.93,UDim2.new(0,28,1,-49),UDim2.new(1,-56,0,3),4)
+ Corner(track,3); track.Visible = opts.ShowProgress ~= false
+ local fill = frame(track,"ProgressFill",accent,0,UDim2.new(),UDim2.fromScale(0,1),5); Corner(fill,3)
+ local fillGradient = Instance.new("UIGradient"); fillGradient.Color = ColorSequence.new(accent:Lerp(Color3.new(1,1,1),.4),accent); fillGradient.Parent = fill
+ local status = label("Status",opts.Status or "Preparing your workspace",11,muted,height-36,17)
+ status.TextXAlignment = Enum.TextXAlignment.Left; status.Size = UDim2.new(1,-100,0,17)
+ local percent = label("Percent","0%",11,accent,height-36,17)
+ percent.TextXAlignment = Enum.TextXAlignment.Right; percent.Visible = opts.ShowProgress ~= false
+ function api:SetStatus(text)
+  if not finished then status.Text = tostring(text) end
+  return self
+ end
+ function api:SetProgress(value, text)
+  if finished or closing then return self end
+  local n = tonumber(value)
+  if not n or n ~= n then return self end
+  progress = math.clamp(n,0,1)
+  fill.Size = UDim2.fromScale(progress,1)
+  percent.Text = tostring(math.floor(progress*100+.5)).."%"
+  if text ~= nil then self:SetStatus(text) end
+  return self
+ end
+ local exitElapsed = 0
+ local exitReason = "completed"
+ function api:Complete(text, reason)
+  if finished or closing then return self end
+  self:SetProgress(1,text or opts.CompleteText or "Ready")
+  closing = true; exitReason = reason or "completed"
+  if not motion then finish(exitReason,true); return self end
+  return self
+ end
+ if opts.Skippable == true then
+  local skip = Instance.new("TextButton"); skip.Name = "Skip"; skip.Text = opts.SkipText or "Skip"
+  skip.FontFace = opts.Font or self.Theme.FontRegular; skip.TextSize = 11; skip.TextColor3 = muted
+  skip.BackgroundTransparency = 1; skip.Size = UDim2.fromOffset(60,36); skip.Position = UDim2.new(1,-72,0,8)
+  skip.ZIndex = 6; skip.Parent = group
+  jan:Add(skip.Activated:Connect(function() api:Complete(opts.CompleteText,"skipped") end))
+ end
+ animate(group,{GroupTransparency=0},.4); animate(scale,{Scale=1},.5)
+ local exiting = false
+ jan:Add(RunService.Heartbeat:Connect(function(dt)
+  if finished then return end
+  resize()
+  if closing then
+   exitElapsed += dt
+   if exitElapsed >= .15 and not exiting then
+    exiting = true
+    animate(group,{GroupTransparency=1},.28); animate(scale,{Scale=.97},.28); animate(dim,{BackgroundTransparency=1},.28)
+   end
+   if exitElapsed >= .45 then finish(exitReason,true) end
+  elseif opts.AutoClose ~= false then
+   elapsed += dt
+   api:SetProgress(elapsed/duration)
+   if elapsed >= duration then api:Complete() end
+  end
+ end))
+ return api
+end
+
+
+
 local function RegisterPopupOpen(closeFn)
 	if ActivePopupClose and ActivePopupClose ~= closeFn then
 		local previous = ActivePopupClose
@@ -10017,159 +10184,6 @@ function Tab:AddCardGrid(opts)
 		end,
 		Destroy = function() outer:Destroy() end,
 	}
-end
-
--- Extended input elements share the same theme, search and flag lifecycle.
-do
-local function shell(tab, opts)
- local card = BaseCard(tab._page, 0)
- card.AutomaticSize = Enum.AutomaticSize.Y
- local pad = Instance.new('UIPadding');pad.PaddingLeft=UDim.new(0,12);pad.PaddingRight=UDim.new(0,12);pad.PaddingTop=UDim.new(0,10);pad.PaddingBottom=UDim.new(0,10);pad.Parent=card
- local list=Instance.new('UIListLayout');list.Padding=UDim.new(0,8);list.SortOrder=Enum.SortOrder.LayoutOrder;list.Parent=card
- local function label(text,size)
-  local l=Instance.new('TextLabel');l.BackgroundTransparency=1;l.Text=tostring(text);l.TextSize=size;l.FontFace=NullUI.Theme.FontRegular;l.TextWrapped=true;l.TextXAlignment=Enum.TextXAlignment.Left;l.Size=UDim2.new(1,0,0,size+3);l.AutomaticSize=Enum.AutomaticSize.Y;l.ZIndex=Z.Content+1;l.Parent=card;BindTheme(l,'TextColor3','Text');return l
- end
- label(opts.Text or opts.Title or 'Control',13).LayoutOrder=0
- if opts.Description then local l=label(opts.Description,12);l.LayoutOrder=1;BindTheme(l,'TextColor3','TextDim') end
- local body=Instance.new('Frame');body.BackgroundTransparency=1;body.Size=UDim2.new(1,0,0,32);body.LayoutOrder=2;body.ZIndex=Z.Content+1;body.Parent=card
- tab._window:_RegisterSearchable(tab,opts.Text or opts.Title or 'Control',card,opts.Icon)
- local jan=Janitor.new();tab._janitor:Add(jan);jan:Add(card.Destroying:Connect(function()jan:Destroy()end))
- return card,body,jan
-end
-local function button(parent,text)
- local b=Instance.new('TextButton');b.Text=text;b.FontFace=NullUI.Theme.FontRegular;b.TextSize=13;b.AutoButtonColor=false;b.BackgroundTransparency=.9;b.BorderSizePixel=0;b.ZIndex=Z.Content+3;b.Parent=parent;BindTheme(b,'BackgroundColor3','Surface');BindTheme(b,'TextColor3','Text');Corner(b,6);return b
-end
-local function field(parent)
- local b=Instance.new('TextBox');b.Text='';b.ClearTextOnFocus=false;b.FontFace=NullUI.Theme.FontRegular;b.TextSize=13;b.BackgroundTransparency=.9;b.BorderSizePixel=0;b.Size=UDim2.fromScale(1,1);b.ZIndex=Z.Content+2;b.Parent=parent;BindTheme(b,'BackgroundColor3','Surface');BindTheme(b,'TextColor3','Text');Corner(b,6);return b
-end
-local function state(opts,card,jan,kind,initial,normalize,render)
- local value;local listeners={};local api={Instance=card}
- api.Get=function()return type(value)=='table' and table.clone(value) or value end
- api.Set=function(_,v,silent)
-  value=normalize(v);render(value)
-  if not silent then
-   if type(opts.Callback)=='function' then SpawnCallback(opts.Callback,api.Get()) end
-   for _,fn in pairs(listeners)do SpawnCallback(fn,api.Get())end
-  end
- end
- api.OnChanged=function(_,fn)local token={};listeners[token]=fn;return {Disconnect=function()listeners[token]=nil end}end
- api.Destroy=function()jan:Destroy();table.clear(listeners);if opts.Flag and NullUI.Flags[opts.Flag]==api then NullUI.Flags[opts.Flag]=nil end;card:Destroy()end
- api:Set(initial,true);return RegisterFlag(opts,api,kind)
-end
-local function numberRules(opts)
- local lo=tonumber(opts.Min) or 0;local hi=math.max(lo,tonumber(opts.Max) or 100);local step=math.max(.000001,tonumber(opts.Step) or 1)
- return lo,hi,step,function(v)local n=tonumber(v);if not n or n~=n then n=lo end;return math.clamp(lo+math.round((n-lo)/step)*step,lo,hi)end
-end
-function Tab:AddNumberInput(opts)
- opts=opts or {};local card,body,jan=shell(self,opts);local lo,hi,step,norm=numberRules(opts)
- local minus=button(body,'−');minus.Size=UDim2.fromOffset(32,32)
- local plus=button(body,'+');plus.AnchorPoint=Vector2.new(1,0);plus.Position=UDim2.fromScale(1,0);plus.Size=minus.Size
- local box=field(body);box.Position=UDim2.fromOffset(38,0);box.Size=UDim2.new(1,-76,1,0)
- local api=state(opts,card,jan,'NumberInput',opts.Default or lo,norm,function(v)box.Text=tostring(v)end)
- jan:Add(minus.Activated:Connect(function()api:Set(api:Get()-step)end));jan:Add(plus.Activated:Connect(function()api:Set(api:Get()+step)end))
- jan:Add(box.FocusLost:Connect(function()if tonumber(box.Text)then api:Set(box.Text)else box.Text=tostring(api:Get())end end));return api
-end
-local function choices(tab,opts,kind)
- opts=opts or {};local card,body,jan=shell(tab,opts);local values={};for _,v in ipairs(opts.Options or {})do v=tostring(v);if not table.find(values,v)then table.insert(values,v)end end
- local multi=kind=='CheckboxGroup';local segmented=kind=='SegmentedControl';local rows={};local indicator
- if segmented then indicator=Instance.new('Frame');indicator.BackgroundTransparency=.75;indicator.BorderSizePixel=0;indicator.ZIndex=Z.Content+2;indicator.Parent=body;BindTheme(indicator,'BackgroundColor3','Accent');Corner(indicator,6) end
- local api
- local function layout()
-  local width=math.max(1,body.AbsoluteSize.X/GetUIScale());local cols=segmented and math.max(1,math.min(#values,math.floor(width/90))) or 1
-  body.Size=UDim2.new(1,0,0,math.ceil(#values/cols)*36)
-  for i,b in ipairs(rows)do b.Position=UDim2.new(((i-1)%cols)/cols,0,0,math.floor((i-1)/cols)*36);b.Size=UDim2.new(1/cols,-4,0,32)end
-  if api then api:Set(api:Get(),true)end
- end
- for i,v in ipairs(values)do local b=button(body,v);b.TextTruncate=Enum.TextTruncate.AtEnd;rows[i]=b
-  jan:Add(b.Activated:Connect(function()if multi then local list=api:Get();local at=table.find(list,v);if at then table.remove(list,at)else table.insert(list,v)end;api:Set(list)else api:Set(v)end end))
- end
- local function norm(v)
-  if multi then local result={};for _,name in ipairs(values)do if type(v)=='table' and table.find(v,name)then table.insert(result,name)end end;return result end
-  return table.find(values,tostring(v)) and tostring(v) or values[1]
- end
- api=state(opts,card,jan,kind,opts.Default,norm,function(v)
-  for i,b in ipairs(rows)do local selected=multi and table.find(v,values[i])~=nil or not multi and v==values[i]
-   b.Text=(segmented and '' or (multi and (selected and '☑  ' or '☐  ') or (selected and '●  ' or '○  ')))..values[i]
-   b.BackgroundTransparency=selected and .8 or 1
-   if segmented and selected then b.BackgroundTransparency=1;Tween(indicator,{Position=b.Position,Size=b.Size},.22,Enum.EasingStyle.Quint,Enum.EasingDirection.Out)end
-  end
- end)
- jan:Add(body:GetPropertyChangedSignal('AbsoluteSize'):Connect(layout));layout();return api
-end
-function Tab:AddSegmentedControl(opts)return choices(self,opts,'SegmentedControl')end
-function Tab:AddRadioGroup(opts)return choices(self,opts,'RadioGroup')end
-function Tab:AddCheckboxGroup(opts)return choices(self,opts,'CheckboxGroup')end
-function Tab:AddMultiLineTextbox(opts)
- opts=opts or {};local card,body,jan=shell(self,opts);body.Size=UDim2.new(1,0,0,math.clamp(tonumber(opts.Height)or 100,60,400))
- local scroll=Instance.new('ScrollingFrame');scroll.BackgroundTransparency=1;scroll.BorderSizePixel=0;scroll.Size=UDim2.fromScale(1,1);scroll.AutomaticCanvasSize=Enum.AutomaticSize.Y;scroll.CanvasSize=UDim2.new();scroll.ScrollBarThickness=3;scroll.ZIndex=Z.Content+2;scroll.Parent=body;BindTheme(scroll,'ScrollBarImageColor3','TextDim')
- local box=field(scroll);box.Size=UDim2.new(1,-6,0,body.Size.Y.Offset);box.AutomaticSize=Enum.AutomaticSize.Y;box.MultiLine=true;box.TextWrapped=true;box.TextXAlignment=Enum.TextXAlignment.Left;box.TextYAlignment=Enum.TextYAlignment.Top;box.PlaceholderText=opts.Placeholder or 'Enter text...';box.ClipsDescendants=true
- local pad=Instance.new('UIPadding');pad.PaddingLeft=UDim.new(0,8);pad.PaddingRight=UDim.new(0,8);pad.PaddingTop=UDim.new(0,8);pad.PaddingBottom=UDim.new(0,8);pad.Parent=box
- local api=state(opts,card,jan,'MultiLineTextbox',opts.Default or '',function(v)return tostring(v or '')end,function(v)box.Text=v end)
- jan:Add(box.FocusLost:Connect(function()api:Set(box.Text)end));api.TextBox=box;return api
-end
-function Tab:AddProgressBar(opts)
- opts=opts or {};local card,body,jan=shell(self,opts);body.Size=UDim2.new(1,0,0,26)
- local track=Instance.new('Frame');track.BackgroundTransparency=.85;track.BorderSizePixel=0;track.Size=UDim2.new(1,0,0,5);track.Position=UDim2.fromOffset(0,21);track.ZIndex=Z.Content+2;track.Parent=body;BindTheme(track,'BackgroundColor3','TextDim');Corner(track,3)
- local fill=Instance.new('Frame');fill.BorderSizePixel=0;fill.ZIndex=Z.Content+3;fill.Parent=track;BindTheme(fill,'BackgroundColor3','Accent');Corner(fill,3)
- local label=Instance.new('TextLabel');label.BackgroundTransparency=1;label.Size=UDim2.new(1,0,0,16);label.FontFace=NullUI.Theme.FontRegular;label.TextSize=12;label.ZIndex=Z.Content+2;label.Parent=body;BindTheme(label,'TextColor3','TextDim')
- local lo,hi,step,norm=numberRules(opts)
- return state(opts,card,jan,'ProgressBar',opts.Default or lo,norm,function(v)local ratio=hi>lo and (v-lo)/(hi-lo)or 0;label.Text=(opts.Label and tostring(opts.Label)..' · 'or '')..math.round(ratio*100)..'%';Tween(fill,{Size=UDim2.new(ratio,0,1,0)},.2)end)
-end
-function Tab:AddImageCard(opts)
- opts=opts or {};local card,body,jan=shell(self,opts);body.Size=UDim2.new(1,0,0,math.clamp(tonumber(opts.Height)or 150,60,400))
- local img=Instance.new('ImageLabel');img.BackgroundTransparency=1;img.Image=tostring(opts.Image or '');if img.Image:match('^%d+$')then img.Image='rbxassetid://'..img.Image end;img.Size=UDim2.fromScale(1,1);img.ScaleType=Enum.ScaleType.Fit;img.ZIndex=Z.Content+2;img.Parent=body;Corner(img,8)
- if opts.Actions then local proxy=setmetatable({_page=card,_window=self._window,_janitor=jan,Name=self.Name},{__index=self});local group=proxy:AddButtonGroup({Buttons=opts.Actions});group.Instance.LayoutOrder=3 end
- return {Instance=card,SetImage=function(_,image)img.Image=tostring(image or '');if img.Image:match('^%d+$')then img.Image='rbxassetid://'..img.Image end end,Destroy=function()jan:Destroy();card:Destroy()end}
-end
-function Tab:AddRangeSlider(opts)
- opts=opts or {};local card,body,jan=shell(self,opts);body.Size=UDim2.new(1,0,0,54);local lo,hi,step,norm=numberRules(opts)
- local low=field(body);low.Size=UDim2.new(.5,-4,0,24)
- local high=field(body);high.Position=UDim2.new(.5,4,0,0);high.Size=low.Size
- local track=Instance.new('Frame');track.Size=UDim2.new(1,-16,0,4);track.Position=UDim2.new(0,8,0,40);track.BorderSizePixel=0;track.BackgroundTransparency=.7;track.ZIndex=Z.Content+2;track.Parent=body;BindTheme(track,'BackgroundColor3','TextDim');Corner(track,2)
- local fill=Instance.new('Frame');fill.BorderSizePixel=0;fill.ZIndex=Z.Content+3;fill.Parent=track;BindTheme(fill,'BackgroundColor3','Accent')
- local handles={};for i=1,2 do local b=button(track,'');b.BackgroundTransparency=0;b.AnchorPoint=Vector2.new(.5,.5);b.Size=UDim2.fromOffset(14,14);BindTheme(b,'BackgroundColor3','SliderKnob');Corner(b,7);handles[i]=b end
- local api=state(opts,card,jan,'RangeSlider',opts.Default or {lo,hi},function(v)v=type(v)=='table'and v or {lo,hi};local a,b=norm(v[1]),norm(v[2]or hi);return {math.min(a,b),math.max(a,b)}end,function(v)
-  low.Text=tostring(v[1]);high.Text=tostring(v[2]);local span=hi-lo;local a=span>0 and(v[1]-lo)/span or 0;local b=span>0 and(v[2]-lo)/span or 0
-  handles[1].Position=UDim2.new(a,0,.5,0);handles[2].Position=UDim2.new(b,0,.5,0);fill.Position=UDim2.fromScale(a,0);fill.Size=UDim2.fromScale(b-a,1)
- end)
- local dragging,touch
- local function move(x)if not dragging then return end;local v=api:Get();local n=norm(lo+math.clamp((x-track.AbsolutePosition.X)/math.max(1,track.AbsoluteSize.X),0,1)*(hi-lo));v[dragging]=dragging==1 and math.min(n,v[2])or math.max(n,v[1]);api:Set(v)end
- for i,h in ipairs(handles)do jan:Add(h.InputBegan:Connect(function(input)if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragging=i;touch=input;move(input.Position.X)end end))end
- jan:Add(UserInputService.InputChanged:Connect(function(input)if dragging and(input==touch or input.UserInputType==Enum.UserInputType.MouseMovement and touch.UserInputType~=Enum.UserInputType.Touch)then move(input.Position.X)end end))
- jan:Add(UserInputService.InputEnded:Connect(function(input)if input==touch or input.UserInputType==Enum.UserInputType.MouseButton1 then dragging=nil;touch=nil end end))
- jan:Add(low.FocusLost:Connect(function()api:Set({tonumber(low.Text)or api:Get()[1],api:Get()[2]})end));jan:Add(high.FocusLost:Connect(function()api:Set({api:Get()[1],tonumber(high.Text)or api:Get()[2]})end));return api
-end
-function Tab:AddListEditor(opts)
- opts=opts or {};local card,body,jan=shell(self,opts);body.AutomaticSize=Enum.AutomaticSize.Y;body.Size=UDim2.new(1,0,0,0)
- local list=Instance.new('UIListLayout');list.Padding=UDim.new(0,6);list.SortOrder=Enum.SortOrder.LayoutOrder;list.Parent=body
- local api;local renderJan=Janitor.new();jan:Add(function()renderJan:Destroy()end)
- local function render(values)
-  renderJan:Destroy();renderJan=Janitor.new()
-  for _,child in ipairs(body:GetChildren())do if child:IsA('GuiObject')then child:Destroy()end end
-  for i,v in ipairs(values)do
-   local row=Instance.new('Frame');row.BackgroundTransparency=1;row.Size=UDim2.new(1,0,0,30);row.LayoutOrder=i;row.Parent=body
-   local box=field(row);box.Size=UDim2.new(1,-36,1,0);box.Text=v
-   local remove=button(row,'×');remove.Position=UDim2.new(1,-30,0,0);remove.Size=UDim2.fromOffset(30,30)
-   renderJan:Add(box.FocusLost:Connect(function()local data=api:Get();if data[i]~=box.Text then data[i]=box.Text;api:Set(data)end end))
-   renderJan:Add(remove.Activated:Connect(function()local data=api:Get();table.remove(data,i);api:Set(data)end))
-  end
-  local add=button(body,'+ Add item');add.Size=UDim2.new(1,0,0,30);add.LayoutOrder=#values+1
-  renderJan:Add(add.Activated:Connect(function()local data=api:Get();table.insert(data,'New item');api:Set(data)end))
- end
- api=state(opts,card,jan,'ListEditor',opts.Default or {},function(v)local result={};if type(v)=='table'then for _,text in ipairs(v)do table.insert(result,tostring(text))end end;return result end,render)
- api.Add=function(_,text)local data=api:Get();table.insert(data,tostring(text or ''));api:Set(data)end
- api.Remove=function(_,i)local data=api:Get();if data[i]then table.remove(data,i);api:Set(data)end end
- return api
-end
-end
-
-function NullUI:CopyConfigJSON()
- local ok,json=pcall(function()return HttpService:JSONEncode(self:GetConfig())end)
- if not ok then return false,tostring(json)end
- local copy=hasFn('setclipboard') or hasFn('toclipboard')
- if not copy then return false,'Clipboard unavailable',json end
- local copied,err=pcall(copy,json);if not copied then return false,tostring(err),json end
- return true,json
 end
 
 function NullUI:GetConfig()

@@ -12,3 +12,7 @@ Teste isolado do pacote: npm install, depois node tests/callbacks.mjs.
 Este pacote contem os arquivos alterados e o teste isolado; os demais testes e arquivos de build ficam no repositorio original.
 
 As alteracoes foram preparadas localmente; nao foram publicadas no GitHub.
+
+Atualizacao: removidos a aba New Elements, seus nove componentes exclusivos e CopyConfigJSON da biblioteca e do exemplo. O teste OnChanged agora usa o slider padrao. Atualize tambem README.md.
+
+Intro opcional adicionada. Veja INTRO.md. No exemplo, CONFIG.Intro.Enabled ativa ou desativa. Para testar: node tests/intro.mjs.
