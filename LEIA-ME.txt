@@ -1,0 +1,14 @@
+COMO USAR
+
+1. Substitua core.luau e full.luau no seu repositorio pelos arquivos deste pacote.
+2. O example.luau usa a mesma URL do seu GitHub. A alteracao so aparece por essa URL depois de voce atualizar full.luau no repositorio.
+3. Execute o exemplo e abra a aba Callback Handler. Clique em Test callback error para ver a notificacao vermelha.
+
+O handler protege callbacks dos elementos do core e listeners OnChanged. Um erro exibe Callback Error com a mensagem por 5 segundos e registra os detalhes no console. Nao troca o titulo do elemento por Callback Error.
+
+Os testes novos passaram para core e full, assim como compilacao e escala. Um teste geral do repositorio ja falha na versao original. Nao houve teste visual no Roblox.
+
+Teste isolado do pacote: npm install, depois node tests/callbacks.mjs.
+Este pacote contem os arquivos alterados e o teste isolado; os demais testes e arquivos de build ficam no repositorio original.
+
+As alteracoes foram preparadas localmente; nao foram publicadas no GitHub.

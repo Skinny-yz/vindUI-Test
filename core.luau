@@ -89,12 +89,40 @@ LibJanitor:Add(RunService.Heartbeat:Connect(function()
 end))
 LibJanitor:Add(function() table.clear(UIJobs) end)
 
+-- Keep user callbacks asynchronous, but report failures inside the UI.
+-- The protected call must run inside the spawned thread to catch its errors.
+local function SpawnCallback(callback, ...)
+	if callback == nil then return end
+	return task.spawn(function(...)
+		local message
+		local ok, traceback = xpcall(function(...)
+			callback(...)
+		end, function(err)
+			local converted, text = pcall(tostring, err)
+			message = converted and text or "Unknown callback error"
+			return debug.traceback(message, 2)
+		end, ...)
+		if ok then return end
+		warn("[VindUI] Callback Error: " .. tostring(traceback))
+		-- A broken notification renderer must not cause another callback error.
+		local notified, notifyError = pcall(function()
+			NullUI:Notify({
+				Title = "Callback Error",
+				Text = message,
+				Type = "error",
+				Duration = 5,
+			})
+		end)
+		if not notified then warn("[VindUI] Could not show callback error: " .. tostring(notifyError)) end
+	end, ...)
+end
+
 local function MakeSignal()
 	local listeners = {}
 	return {
 		Fire = function(...)
 			for _, fn in ipairs(table.clone(listeners)) do
-				task.spawn(fn, ...)
+				SpawnCallback(fn, ...)
 			end
 		end,
 		Connect = function(fn)
@@ -1294,7 +1322,7 @@ function NullUI:Notify(opts)
 			btn.MouseEnter:Connect(function() Tween(btn, { BackgroundTransparency = 0.7 }, 0.12) end)
 			btn.MouseLeave:Connect(function() Tween(btn, { BackgroundTransparency = 0.85 }, 0.12) end)
 			btn.MouseButton1Click:Connect(function()
-				if action.Callback then task.spawn(action.Callback) end
+				if action.Callback then SpawnCallback(action.Callback) end
 				if action.DismissOnClick ~= false then dismiss() end
 			end)
 
@@ -1584,7 +1612,7 @@ function NullUI:Confirm(opts)
 			if backdrop then backdrop:Destroy() end
 		end)
 
-		if opts.Callback then task.spawn(opts.Callback, confirmed) end
+		if opts.Callback then SpawnCallback(opts.Callback, confirmed) end
 	end
 
 	jan:Add(backdrop.MouseButton1Click:Connect(function() close(false) end))
@@ -1905,7 +1933,7 @@ function NullUI:Modal(opts)
 		end)
 
 		if opts.Callback then
-			task.spawn(opts.Callback, confirmed, confirmed and collectValues() or nil)
+			SpawnCallback(opts.Callback, confirmed, confirmed and collectValues() or nil)
 		end
 	end
 
@@ -3023,7 +3051,7 @@ function Window:AddDockButton(opts)
 		Tween(icon, { ImageColor3 = NullUI.Theme.TextDim }, 0.12)
 	end))
 	jan:Add(btn.MouseButton1Click:Connect(function()
-		if opts.Callback then task.spawn(opts.Callback) end
+		if opts.Callback then SpawnCallback(opts.Callback) end
 	end))
 
 	return {
@@ -3051,7 +3079,7 @@ function Window:AddPanelTab(opts)
 
 	if opts.OnToggle then
 		table.insert(self._tabChangeListeners, function(selected)
-			task.spawn(opts.OnToggle, selected == tabObj)
+			SpawnCallback(opts.OnToggle, selected == tabObj)
 		end)
 	end
 
@@ -3523,7 +3551,7 @@ function Window:AddTab(nameOrOpts)
 		local previousTab = self._currentTab
 		self._currentTab = tabObj
 		for _, fn in ipairs(self._tabChangeListeners) do
-			task.spawn(fn, tabObj)
+			SpawnCallback(fn, tabObj)
 		end
 
 		for _, t in pairs(self._tabs) do
@@ -3933,7 +3961,7 @@ function Window:_PromptTabPassword(tabObj, callback)
 			backdrop:Destroy()
 		end)
 
-		task.spawn(callback, success, remember)
+		SpawnCallback(callback, success, remember)
 	end
 
 	local function shakeError()
@@ -5422,7 +5450,7 @@ function Tab:AddRating(opts)
 			starBar.Nudge()
 			return
 		end
-		if opts.Callback then task.spawn(opts.Callback, selected, feedback.Box.Text) end
+		if opts.Callback then SpawnCallback(opts.Callback, selected, feedback.Box.Text) end
 		if opts.WebhookUrl then
 			task.spawn(function()
 				NullUI:SendFeedbackWebhook(opts.WebhookUrl, selected, feedback.Box.Text, opts.WebhookOptions)
@@ -5517,7 +5545,7 @@ function Tab:AddButtonGroup(opts)
 				Tween(button, {BackgroundTransparency = 0.96}, 0.15)
 			end))
 			jan:Add(button.Activated:Connect(function()
-				if entry.Enabled and type(item.Callback) == "function" then task.spawn(item.Callback, index) end
+				if entry.Enabled and type(item.Callback) == "function" then SpawnCallback(item.Callback, index) end
 			end))
 			self._window:_RegisterSearchable(self, label.Text, button, item.Icon)
 		end
@@ -5601,7 +5629,7 @@ function Tab:AddButton(opts)
 			Tween(card, { BackgroundTransparency = 0.9 }, 0.15)
 			Tween(chev, { ImageColor3 = NullUI.Theme.Text }, 0.15)
 		end)
-		if opts.Callback then task.spawn(opts.Callback) end
+		if opts.Callback then SpawnCallback(opts.Callback) end
 	end)
 
 	return {
@@ -5715,7 +5743,7 @@ function Tab:AddCard(opts)
 			task.delay(0.08, function()
 				if card.Parent then Tween(card, { BackgroundTransparency = 0.9 }, 0.15) end
 			end)
-			task.spawn(opts.Callback)
+			SpawnCallback(opts.Callback)
 		end)
 	end
 
@@ -5757,7 +5785,7 @@ function Tab:AddCard(opts)
 			task.delay(0.08, function()
 				if footerBtn.Parent then Tween(footerBtn, { BackgroundTransparency = 0.7 }, 0.15) end
 			end)
-			if opts.ButtonCallback then task.spawn(opts.ButtonCallback) end
+			if opts.ButtonCallback then SpawnCallback(opts.ButtonCallback) end
 		end)
 	end
 
@@ -5819,7 +5847,7 @@ function Tab:AddCard(opts)
 				starBar.Nudge()
 				return
 			end
-			if ratingOpts.Callback then task.spawn(ratingOpts.Callback, sel, feedback.Box.Text) end
+			if ratingOpts.Callback then SpawnCallback(ratingOpts.Callback, sel, feedback.Box.Text) end
 			if ratingOpts.WebhookUrl then
 				task.spawn(function()
 					NullUI:SendFeedbackWebhook(ratingOpts.WebhookUrl, sel, feedback.Box.Text, ratingOpts.WebhookOptions)
@@ -6145,7 +6173,7 @@ function Tab:AddLoadoutGroup(opts)
 		task.delay(0.08, function()
 			if btn.Parent then Tween(btn, { BackgroundTransparency = 0.85 }, 0.15) end
 		end)
-		if opts.Callback then task.spawn(opts.Callback) end
+		if opts.Callback then SpawnCallback(opts.Callback) end
 	end)
 
 	return { Instance = card, Destroy = function() card:Destroy() end }
@@ -6847,7 +6875,7 @@ function Tab:AddGradientCard(opts)
 			task.delay(0.08, function()
 				if veil.Parent then Tween(veil, { BackgroundTransparency = 0.9 }, 0.15) end
 			end)
-			task.spawn(opts.Callback)
+			SpawnCallback(opts.Callback)
 		end)
 	end
 
@@ -6946,7 +6974,7 @@ function Tab:AddToggle(opts)
 
 	local signal = MakeSignal()
 	local function fireChanged(newState)
-		if opts.Callback then task.spawn(opts.Callback, newState) end
+		if opts.Callback then SpawnCallback(opts.Callback, newState) end
 		signal.Fire(newState)
 	end
 
@@ -7125,7 +7153,7 @@ function Tab:AddSlider(opts)
 
 	local signal = MakeSignal()
 	local function fireChanged(v)
-		if opts.Callback then task.spawn(opts.Callback, v) end
+		if opts.Callback then SpawnCallback(opts.Callback, v) end
 		signal.Fire(v)
 	end
 
@@ -7307,7 +7335,7 @@ function Tab:AddDropdown(opts)
 
 	local signal = MakeSignal()
 	local function fireChanged(newValue)
-		if opts.Callback then task.spawn(opts.Callback, newValue) end
+		if opts.Callback then SpawnCallback(opts.Callback, newValue) end
 		signal.Fire(newValue)
 	end
 
@@ -7822,7 +7850,7 @@ function Tab:AddTextbox(opts)
 
 	local signal = MakeSignal()
 	local function fireChanged(text, enterPressed)
-		if opts.Callback then task.spawn(opts.Callback, text, enterPressed) end
+		if opts.Callback then SpawnCallback(opts.Callback, text, enterPressed) end
 		signal.Fire(text, enterPressed)
 	end
 
@@ -7993,7 +8021,7 @@ function Tab:AddColorPicker(opts)
 		if fireCallback then
 			if not ColorsClose(c, lastFired) then
 				lastFired = c
-				if opts.Callback then task.spawn(opts.Callback, c) end
+				if opts.Callback then SpawnCallback(opts.Callback, c) end
 				signal.Fire(c)
 			end
 		end
@@ -8484,7 +8512,7 @@ function Tab:AddKeybind(opts)
 
 			currentKey = input.KeyCode
 			stopListening()
-			if opts.Callback then task.spawn(opts.Callback, currentKey, "bind") end
+			if opts.Callback then SpawnCallback(opts.Callback, currentKey, "bind") end
 			fireChanged(currentKey)
 		end)
 		jan:Add(listenConn)
@@ -8498,7 +8526,7 @@ function Tab:AddKeybind(opts)
 		if currentKey
 			and input.UserInputType == Enum.UserInputType.Keyboard
 			and input.KeyCode == currentKey then
-			if opts.Callback then task.spawn(opts.Callback, currentKey, "press") end
+			if opts.Callback then SpawnCallback(opts.Callback, currentKey, "press") end
 		end
 	end))
 
@@ -9520,7 +9548,7 @@ function Tab:AddCardGrid(opts)
 			end)
 			button.MouseButton1Click:Connect(function()
 				closeMenu()
-				if action.Callback then task.spawn(action.Callback) end
+				if action.Callback then SpawnCallback(action.Callback) end
 			end)
 		end
 	end
@@ -9618,7 +9646,7 @@ function Tab:AddCardGrid(opts)
 			actionClick.ZIndex = Z.Content + 8
 			actionClick.Parent = actionBadge
 			actionClick.MouseButton1Click:Connect(function()
-				item.Callback()
+				SpawnCallback(item.Callback)
 			end)
 		end
 
@@ -9657,7 +9685,7 @@ function Tab:AddCardGrid(opts)
 			secondaryClick.ZIndex = Z.Content + 8
 			secondaryClick.Parent = secondaryBadge
 			secondaryClick.MouseButton1Click:Connect(function()
-				item.SecondaryCallback()
+				SpawnCallback(item.SecondaryCallback)
 			end)
 		end
 
@@ -9819,7 +9847,7 @@ function Tab:AddCardGrid(opts)
 						Tween(statLbl, { TextColor3 = NullUI.Theme.TextDim }, 0.1)
 					end)
 					statFrame.MouseButton1Click:Connect(function()
-						task.spawn(stat.Callback)
+						SpawnCallback(stat.Callback)
 					end)
 				end
 			end
@@ -9851,7 +9879,7 @@ function Tab:AddCardGrid(opts)
 				Tween(cellStroke, { Transparency = 0.9 }, 0.12)
 			end)
 			click.MouseButton1Click:Connect(function()
-				task.spawn(item.Callback)
+				SpawnCallback(item.Callback)
 			end)
 		end
 
@@ -10020,8 +10048,8 @@ local function state(opts,card,jan,kind,initial,normalize,render)
  api.Set=function(_,v,silent)
   value=normalize(v);render(value)
   if not silent then
-   if type(opts.Callback)=='function' then task.spawn(opts.Callback,api.Get()) end
-   for _,fn in pairs(listeners)do task.spawn(fn,api.Get())end
+   if type(opts.Callback)=='function' then SpawnCallback(opts.Callback,api.Get()) end
+   for _,fn in pairs(listeners)do SpawnCallback(fn,api.Get())end
   end
  end
  api.OnChanged=function(_,fn)local token={};listeners[token]=fn;return {Disconnect=function()listeners[token]=nil end}end

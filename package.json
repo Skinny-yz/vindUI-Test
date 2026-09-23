@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node tests/compile.mjs && node tests/smoke.mjs && node tests/scale-test.mjs"
+    "test": "node tests/compile.mjs && node tests/smoke.mjs && node tests/scale-test.mjs && node tests/callbacks.mjs"
   },
   "devDependencies": {
     "luau-web": "1.4.0"

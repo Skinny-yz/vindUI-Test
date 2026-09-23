@@ -1252,3 +1252,19 @@ New:AddButton({Text="Copy config as JSON", Icon="Lucide:copy", Callback=function
  local ok, result = VindUI:CopyConfigJSON()
  notify(ok and "Copied" or "Copy unavailable", ok and "Configuration copied as JSON." or tostring(result))
 end})
+-- Callback error handling demo (requires the updated full.luau).
+local CallbackDemo = Window:AddTab({Name = "Callback Handler", Icon = "Lucide:shield-alert"})
+CallbackDemo:AddParagraph({Title = "Protected callbacks", Text = "Errors show a red Callback Error notification. Other controls keep working. The full traceback is available in the console."})
+CallbackDemo:AddButton({Text = "Test callback error", Description = "Click to trigger an intentional test error.", Callback = function()
+    error("Intentional example error: the callback handler is working.")
+end})
+CallbackDemo:AddToggle({Text = "Test toggle error", Default = false, Callback = function(enabled)
+    if enabled then error("Intentional toggle callback error.") end
+end})
+local HandlerNumber = CallbackDemo:AddNumberInput({Text = "Test OnChanged", Min = 0, Max = 10, Default = 0})
+HandlerNumber:OnChanged(function(value)
+    if value == 3 then error("Intentional OnChanged error at value 3.") end
+end)
+CallbackDemo:AddButton({Text = "Test successful callback", Callback = function()
+    VindUI:Notify({Title = "Success", Text = "The interface still works after an error.", Type = "success"})
+end})
