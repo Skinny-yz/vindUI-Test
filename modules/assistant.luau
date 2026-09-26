@@ -3,6 +3,8 @@ return {
 Name = "assistant", API = 1,
 Requires = {"chat-common"},
 Install = function(context)
+ local ThemeValue = context.ThemeValue
+local BindTheme = context.BindTheme
 	local ASSETS_FOLDER = context.ASSETS_FOLDER
 	local Corner = context.Corner
 	local EnsureAssetsFolder = context.EnsureAssetsFolder
@@ -313,7 +315,7 @@ function Window:AddChatPanel(opts)
 	local titleIcon = Instance.new("ImageLabel")
 	titleIcon.BackgroundTransparency = 1
 	titleIcon.Image = ResolveIcon(opts.Icon or "bot")
-	titleIcon.ImageColor3 = NullUI.Theme.Text
+	BindTheme(titleIcon, "ImageColor3", "Text")
 	titleIcon.Size = UDim2.fromOffset(14, 14)
 	titleIcon.LayoutOrder = 1
 	titleIcon.ZIndex = BASE_Z + 2
@@ -323,7 +325,7 @@ function Window:AddChatPanel(opts)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = opts.Title or "Assistant"
-	titleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.AutomaticSize = Enum.AutomaticSize.X
@@ -357,7 +359,7 @@ function Window:AddChatPanel(opts)
 	local closeBtn = headerIconButton("x", 4)
 
 	local headerDivider = Instance.new("Frame")
-	headerDivider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(headerDivider, "BackgroundColor3", "Card")
 	headerDivider.BackgroundTransparency = 0.94
 	headerDivider.BorderSizePixel = 0
 	headerDivider.Position = UDim2.fromOffset(0, HEADER_H)
@@ -411,7 +413,7 @@ function Window:AddChatPanel(opts)
 		local avatarFinalTransparency = isUser and 0.85 or 0.82
 		local avatar = Instance.new("Frame")
 		avatar.Name = "Avatar"
-		avatar.BackgroundColor3 = isUser and Color3.new(1, 1, 1) or NullUI.Theme.Accent
+		BindTheme(avatar, "BackgroundColor3", function(theme) return isUser and theme.Card or theme.Accent end)
 		avatar.BackgroundTransparency = 1
 		avatar.BorderSizePixel = 0
 		avatar.Size = UDim2.fromOffset(AVATAR, AVATAR)
@@ -448,7 +450,7 @@ function Window:AddChatPanel(opts)
 			botIcon.BackgroundTransparency = 1
 			botIcon.ImageTransparency = 1
 			botIcon.Image = ResolveIcon("bot")
-			botIcon.ImageColor3 = NullUI.Theme.Accent
+			BindTheme(botIcon, "ImageColor3", "Accent")
 			botIcon.Size = UDim2.fromOffset(14, 14)
 			botIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 			botIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -479,7 +481,7 @@ function Window:AddChatPanel(opts)
 		local bubbleFinalTransparency = isUser and 0.72 or 0.9
 		local bubble = Instance.new("Frame")
 		bubble.Name = "Bubble"
-		bubble.BackgroundColor3 = isUser and NullUI.Theme.Accent or Color3.new(1, 1, 1)
+		BindTheme(bubble, "BackgroundColor3", function(theme) return isUser and theme.Accent or theme.Card end)
 		bubble.BackgroundTransparency = 1
 		bubble.BorderSizePixel = 0
 		bubble.AutomaticSize = Enum.AutomaticSize.Y
@@ -517,7 +519,7 @@ function Window:AddChatPanel(opts)
 			if seg.kind == "code" then
 				local card = Instance.new("Frame")
 				card.Name = "CodeBlock"
-				card.BackgroundColor3 = NullUI.Theme.Background
+				BindTheme(card, "BackgroundColor3", "Background")
 				card.BackgroundTransparency = 0.1
 				card.BorderSizePixel = 0
 				card.ClipsDescendants = true
@@ -545,7 +547,7 @@ function Window:AddChatPanel(opts)
 				langLabel.BackgroundTransparency = 1
 				langLabel.FontFace = NullUI.Theme.FontRegular
 				langLabel.Text = seg.lang
-				langLabel.TextColor3 = NullUI.Theme.TextDim
+				BindTheme(langLabel, "TextColor3", "TextDim")
 				langLabel.TextSize = 11
 				langLabel.TextXAlignment = Enum.TextXAlignment.Left
 				langLabel.Position = UDim2.fromOffset(10, 0)
@@ -557,7 +559,7 @@ function Window:AddChatPanel(opts)
 					local btn = Instance.new("TextButton")
 					btn.Text = ""
 					btn.AutoButtonColor = false
-					btn.BackgroundColor3 = Color3.new(1, 1, 1)
+					BindTheme(btn, "BackgroundColor3", "Card")
 					btn.BackgroundTransparency = 1
 					btn.BorderSizePixel = 0
 					btn.AnchorPoint = Vector2.new(1, 0.5)
@@ -570,7 +572,7 @@ function Window:AddChatPanel(opts)
 					local ic = Instance.new("ImageLabel")
 					ic.BackgroundTransparency = 1
 					ic.Image = ResolveIcon(icon)
-					ic.ImageColor3 = NullUI.Theme.TextDim
+					BindTheme(ic, "ImageColor3", "TextDim")
 					ic.Size = UDim2.fromOffset(12, 12)
 					ic.AnchorPoint = Vector2.new(0.5, 0.5)
 					ic.Position = UDim2.fromScale(0.5, 0.5)
@@ -579,11 +581,11 @@ function Window:AddChatPanel(opts)
 
 					jan:Add(btn.MouseEnter:Connect(function()
 						Tween(btn, { BackgroundTransparency = 0.85 }, 0.12)
-						Tween(ic, { ImageColor3 = NullUI.Theme.Text }, 0.12)
+						Tween(ic, { ImageColor3 = ThemeValue("Text") }, 0.12)
 					end))
 					jan:Add(btn.MouseLeave:Connect(function()
 						Tween(btn, { BackgroundTransparency = 1 }, 0.12)
-						Tween(ic, { ImageColor3 = NullUI.Theme.TextDim }, 0.12)
+						Tween(ic, { ImageColor3 = ThemeValue("TextDim") }, 0.12)
 					end))
 
 					return btn, ic
@@ -597,7 +599,7 @@ function Window:AddChatPanel(opts)
 					Tween(copyIcon, { ImageColor3 = Color3.fromRGB(120, 220, 140) }, 0.1)
 					task.delay(0.4, function()
 						if copyIcon.Parent then
-							Tween(copyIcon, { ImageColor3 = NullUI.Theme.TextDim }, 0.15)
+							Tween(copyIcon, { ImageColor3 = ThemeValue("TextDim") }, 0.15)
 						end
 					end)
 				end))
@@ -627,7 +629,7 @@ function Window:AddChatPanel(opts)
 				end
 
 				local headerDivider = Instance.new("Frame")
-				headerDivider.BackgroundColor3 = Color3.new(1, 1, 1)
+				BindTheme(headerDivider, "BackgroundColor3", "Card")
 				headerDivider.BackgroundTransparency = 0.92
 				headerDivider.BorderSizePixel = 0
 				headerDivider.Size = UDim2.new(1, 0, 0, 1)
@@ -655,7 +657,7 @@ function Window:AddChatPanel(opts)
 				codeLabel.FontFace = Font.new(CHAT_CODE_FONT, Enum.FontWeight.Regular, Enum.FontStyle.Normal)
 				codeLabel.RichText = true
 				codeLabel.Text = HighlightLua(EscapeRichText(seg.content))
-				codeLabel.TextColor3 = NullUI.Theme.Text
+				BindTheme(codeLabel, "TextColor3", "Text")
 				codeLabel.TextSize = 12
 				codeLabel.TextWrapped = true
 				codeLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -672,7 +674,7 @@ function Window:AddChatPanel(opts)
 				label.FontFace = NullUI.Theme.FontRegular
 				label.RichText = true
 				label.Text = MarkdownToRichText(seg.content)
-				label.TextColor3 = NullUI.Theme.Text
+				BindTheme(label, "TextColor3", "Text")
 				label.TextTransparency = 1
 				label.TextSize = 13
 				label.TextWrapped = true
@@ -732,7 +734,7 @@ function Window:AddChatPanel(opts)
 		local toolIcon = Instance.new("ImageLabel")
 		toolIcon.BackgroundTransparency = 1
 		toolIcon.Image = ResolveIcon("wrench")
-		toolIcon.ImageColor3 = NullUI.Theme.Accent
+		BindTheme(toolIcon, "ImageColor3", "Accent")
 		toolIcon.Size = UDim2.fromOffset(11, 11)
 		toolIcon.LayoutOrder = 1
 		toolIcon.ZIndex = BASE_Z + 2
@@ -742,7 +744,7 @@ function Window:AddChatPanel(opts)
 		label.BackgroundTransparency = 1
 		label.FontFace = NullUI.Theme.FontRegular
 		label.Text = "Called tool: " .. tostring(name)
-		label.TextColor3 = NullUI.Theme.TextDim
+		BindTheme(label, "TextColor3", "TextDim")
 		label.TextSize = 11
 		label.AutomaticSize = Enum.AutomaticSize.XY
 		label.Size = UDim2.fromOffset(0, 14)
@@ -784,7 +786,7 @@ function Window:AddChatPanel(opts)
 		rowLayout.Parent = row
 
 		local avatar = Instance.new("Frame")
-		avatar.BackgroundColor3 = NullUI.Theme.Accent
+		BindTheme(avatar, "BackgroundColor3", "Accent")
 		avatar.BackgroundTransparency = 1
 		avatar.BorderSizePixel = 0
 		avatar.Size = UDim2.fromOffset(AVATAR, AVATAR)
@@ -797,7 +799,7 @@ function Window:AddChatPanel(opts)
 		botIcon.BackgroundTransparency = 1
 		botIcon.ImageTransparency = 1
 		botIcon.Image = ResolveIcon("bot")
-		botIcon.ImageColor3 = NullUI.Theme.Accent
+		BindTheme(botIcon, "ImageColor3", "Accent")
 		botIcon.Size = UDim2.fromOffset(14, 14)
 		botIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 		botIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -805,7 +807,7 @@ function Window:AddChatPanel(opts)
 		botIcon.Parent = avatar
 
 		local bubble = Instance.new("Frame")
-		bubble.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(bubble, "BackgroundColor3", "Card")
 		bubble.BackgroundTransparency = 1
 		bubble.BorderSizePixel = 0
 		bubble.Size = UDim2.fromOffset(38, AVATAR)
@@ -819,7 +821,7 @@ function Window:AddChatPanel(opts)
 		for i = 1, 3 do
 			local baseX = 10 + (i - 1) * 9
 			local dot = Instance.new("Frame")
-			dot.BackgroundColor3 = NullUI.Theme.TextDim
+			BindTheme(dot, "BackgroundColor3", "TextDim")
 			dot.BackgroundTransparency = 1
 			dot.BorderSizePixel = 0
 			dot.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -996,7 +998,7 @@ function Window:AddChatPanel(opts)
 		Tween(copyIcon, { ImageColor3 = Color3.fromRGB(120, 220, 140) }, 0.1)
 		task.delay(0.4, function()
 			if copyIcon.Parent then
-				Tween(copyIcon, { ImageColor3 = NullUI.Theme.TextDim }, 0.15)
+				Tween(copyIcon, { ImageColor3 = ThemeValue("TextDim") }, 0.15)
 			end
 		end)
 	end))

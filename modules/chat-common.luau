@@ -3,6 +3,8 @@ return {
 Name = "chat-common", API = 1,
 Requires = {},
 Install = function(context)
+ local ThemeValue = context.ThemeValue
+local BindTheme = context.BindTheme
 	local AddContentScrollThumb = context.AddContentScrollThumb
 	local AddScrollbar = context.AddScrollbar
 	local Corner = context.Corner
@@ -21,7 +23,7 @@ local function CreateChatComposer(content, INPUT_H, BASE_Z, jan, placeholder)
 	inputRow.Parent = content
 
 	local pill = Instance.new("Frame")
-	pill.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(pill, "BackgroundColor3", "Card")
 	pill.BackgroundTransparency = 0.95
 	pill.BorderSizePixel = 0
 	pill.Size = UDim2.new(1, -(INPUT_H + 6), 1, 0)
@@ -40,9 +42,9 @@ local function CreateChatComposer(content, INPUT_H, BASE_Z, jan, placeholder)
 	inputBox.ClearTextOnFocus = false
 	inputBox.FontFace = NullUI.Theme.FontRegular
 	inputBox.PlaceholderText = placeholder
-	inputBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 122)
+	BindTheme(inputBox, "PlaceholderColor3", "TextDim")
 	inputBox.Text = ""
-	inputBox.TextColor3 = NullUI.Theme.Text
+	BindTheme(inputBox, "TextColor3", "Text")
 	inputBox.TextSize = 13
 	inputBox.TextXAlignment = Enum.TextXAlignment.Left
 	inputBox.TextYAlignment = Enum.TextYAlignment.Center
@@ -52,17 +54,17 @@ local function CreateChatComposer(content, INPUT_H, BASE_Z, jan, placeholder)
 	inputBox.Parent = pill
 
 	jan:Add(inputBox.Focused:Connect(function()
-		Tween(pillStroke, { Color = NullUI.Theme.Accent, Transparency = 0.3 }, 0.15)
+		Tween(pillStroke, { Color = ThemeValue("Accent"), Transparency = 0.3 }, 0.15)
 	end))
 	jan:Add(inputBox.FocusLost:Connect(function()
-		Tween(pillStroke, { Color = Color3.new(1, 1, 1), Transparency = 0.9 }, 0.15)
+		Tween(pillStroke, { Color = ThemeValue("Border"), Transparency = 0.9 }, 0.15)
 	end))
 
 	local sendBtn = Instance.new("TextButton")
 	sendBtn.Name = "Send"
 	sendBtn.Text = ""
 	sendBtn.AutoButtonColor = false
-	sendBtn.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(sendBtn, "BackgroundColor3", "Card")
 	sendBtn.BackgroundTransparency = 0.9
 	sendBtn.BorderSizePixel = 0
 	sendBtn.AnchorPoint = Vector2.new(1, 0)
@@ -75,7 +77,7 @@ local function CreateChatComposer(content, INPUT_H, BASE_Z, jan, placeholder)
 	local sendIcon = Instance.new("ImageLabel")
 	sendIcon.BackgroundTransparency = 1
 	sendIcon.Image = ResolveIcon("send")
-	sendIcon.ImageColor3 = NullUI.Theme.Text
+	BindTheme(sendIcon, "ImageColor3", "Text")
 	sendIcon.Size = UDim2.fromOffset(14, 14)
 	sendIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 	sendIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -148,7 +150,7 @@ local function ChatHeaderButton(controls, BASE_Z, jan, icon, layoutOrder)
 		local btn = Instance.new("TextButton")
 		btn.Text = ""
 		btn.AutoButtonColor = false
-		btn.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(btn, "BackgroundColor3", "Card")
 		btn.BackgroundTransparency = 1
 		btn.BorderSizePixel = 0
 		btn.Size = UDim2.fromOffset(22, 22)
@@ -160,7 +162,7 @@ local function ChatHeaderButton(controls, BASE_Z, jan, icon, layoutOrder)
 		local ic = Instance.new("ImageLabel")
 		ic.BackgroundTransparency = 1
 		ic.Image = ResolveIcon(icon)
-		ic.ImageColor3 = NullUI.Theme.TextDim
+		BindTheme(ic, "ImageColor3", "TextDim")
 		ic.Size = UDim2.fromOffset(13, 13)
 		ic.AnchorPoint = Vector2.new(0.5, 0.5)
 		ic.Position = UDim2.fromScale(0.5, 0.5)
@@ -169,11 +171,11 @@ local function ChatHeaderButton(controls, BASE_Z, jan, icon, layoutOrder)
 
 		jan:Add(btn.MouseEnter:Connect(function()
 			Tween(btn, { BackgroundTransparency = 0.9 }, 0.12)
-			Tween(ic, { ImageColor3 = NullUI.Theme.Text }, 0.12)
+			Tween(ic, { ImageColor3 = ThemeValue("Text") }, 0.12)
 		end))
 		jan:Add(btn.MouseLeave:Connect(function()
 			Tween(btn, { BackgroundTransparency = 1 }, 0.12)
-			Tween(ic, { ImageColor3 = NullUI.Theme.TextDim }, 0.12)
+			Tween(ic, { ImageColor3 = ThemeValue("TextDim") }, 0.12)
 		end))
 
 		return btn, ic

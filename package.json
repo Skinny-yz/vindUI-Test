@@ -4,8 +4,10 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node tests/compile.mjs && node tests/smoke.mjs && node tests/scale-test.mjs && node tests/callbacks.mjs && node tests/intro.mjs",
-    "test:intro": "node tests/intro.mjs"
+    "test": "node tests/compile.mjs && node tests/smoke.mjs && node tests/scale-test.mjs && node tests/callbacks.mjs && node tests/intro.mjs && node tests/themes.mjs",
+    "test:intro": "node tests/intro.mjs",
+    "test:themes": "node tests/themes.mjs",
+    "test:ui": "node tests/compile.mjs && node tests/themes.mjs && node tests/callbacks.mjs && node tests/intro.mjs && node tests/scale-test.mjs"
   },
   "devDependencies": {
     "luau-web": "1.4.0"

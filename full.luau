@@ -605,44 +605,79 @@ NullUI.Theme = {
 }
 
 local ThemeBindings = setmetatable({}, {__mode = "k"})
+local ThemeTweens = setmetatable({}, {__mode = "k"})
 local ThemePresets = {
  Dark = {{16,16,16},{24,24,24},{240,240,240},{150,150,155},{255,255,255}},
  Light = {{235,237,241},{215,220,228},{24,28,36},{80,89,104},{45,99,210}},
  Midnight = {{13,18,32},{24,33,53},{232,239,255},{146,166,198},{111,159,255}},
  Forest = {{15,26,22},{26,43,35},{232,246,237},{150,179,162},{108,209,153}},
 }
-NullUI.Theme.ToggleOn = Color3.fromRGB(255,255,255)
-NullUI.Theme.ToggleOff = Color3.fromRGB(46,50,49)
-NullUI.Theme.ToggleKnob = Color3.fromRGB(226,230,228)
-NullUI.Theme.ToggleKnobOn = Color3.fromRGB(18,18,18)
-NullUI.Theme.SliderFill = Color3.fromRGB(255,255,255)
-NullUI.Theme.SliderKnob = Color3.fromRGB(255,255,255)
-NullUI.Theme.Card = Color3.fromRGB(255,255,255)
-local ThemeTokens = {"Background", "Surface", "Text", "TextDim", "Accent"}
+local BaseThemeTokens = {"Background", "Surface", "Text", "TextDim", "Accent"}
+local function CompletePalette(base)
+ local light = base.Background.R*.2126 + base.Background.G*.7152 + base.Background.B*.0722 > .5
+ local accentLight = base.Accent.R*.2126 + base.Accent.G*.7152 + base.Accent.B*.0722 > .55
+ local result = table.clone(base)
+ result.Border = base.TextDim
+ result.Card = base.Text
+ result.ToggleOn = base.Accent
+ result.ToggleOff = base.Surface:Lerp(base.TextDim, .22)
+ result.ToggleKnob = base.Text
+ result.OnAccent = accentLight and Color3.fromRGB(18,22,28) or Color3.fromRGB(250,251,255)
+ result.ToggleKnobOn = result.OnAccent
+ result.SliderFill = base.Accent
+ result.SliderKnob = base.Accent
+ result.Info = light and Color3.fromRGB(35,99,190) or Color3.fromRGB(120,170,255)
+ result.Success = light and Color3.fromRGB(28,123,70) or Color3.fromRGB(110,220,140)
+ result.Warning = light and Color3.fromRGB(146,91,9) or Color3.fromRGB(255,190,90)
+ result.Danger = light and Color3.fromRGB(185,48,61) or Color3.fromRGB(255,105,105)
+ return result
+end
+for token, color in pairs(CompletePalette(NullUI.Theme)) do NullUI.Theme[token] = color end
+local function ThemeValue(token)
+ return {_ThemeToken = token}
+end
+local function ResolveTheme(binding)
+ if type(binding) == "function" then return binding(NullUI.Theme) end
+ return NullUI.Theme[binding]
+end
 local function BindTheme(instance, property, token)
  local bindings = ThemeBindings[instance] or {}
  ThemeBindings[instance] = bindings
  bindings[property] = token
- instance[property] = NullUI.Theme[token]
+ instance[property] = ResolveTheme(token)
 end
 function NullUI:SetTheme(value)
- local colors = value
+ local colors
  if type(value) == "string" then
   assert(ThemePresets[value], "Unknown theme: " .. value)
-  colors = {}
-  for i, token in ipairs(ThemeTokens) do colors[token] = Color3.fromRGB(table.unpack(ThemePresets[value][i])) end
+  local base = {}
+  for i, token in ipairs(BaseThemeTokens) do base[token] = Color3.fromRGB(table.unpack(ThemePresets[value][i])) end
+  colors = CompletePalette(base)
   self._ThemeName = value
  else
   assert(type(value) == "table", "Theme must be a name or color table")
+  colors = table.clone(value)
+  local baseChanged = false
+  local base = {}
+  for _, token in ipairs(BaseThemeTokens) do
+   base[token] = typeof(value[token]) == "Color3" and value[token] or self.Theme[token]
+   if typeof(value[token]) == "Color3" then baseChanged = true end
+  end
+  if baseChanged then
+   colors = CompletePalette(base)
+   for token, color in pairs(value) do colors[token] = color end
+  end
   self._ThemeName = "Custom"
  end
- local changed = {}
  for token, color in pairs(colors) do
-  if typeof(self.Theme[token]) == "Color3" and typeof(color) == "Color3" and self.Theme[token] ~= color then self.Theme[token] = color; changed[token] = true end
+  if typeof(self.Theme[token]) == "Color3" and typeof(color) == "Color3" then self.Theme[token] = color end
  end
  for instance, bindings in pairs(ThemeBindings) do
   if instance.Parent then
-   for property, token in pairs(bindings) do if changed[token] then instance[property] = self.Theme[token] end end
+   if ThemeTweens[instance] then ThemeTweens[instance]:Cancel(); ThemeTweens[instance] = nil end
+   for property, binding in pairs(bindings) do instance[property] = ResolveTheme(binding) end
+  else
+   ThemeBindings[instance] = nil
   end
  end
  return self
@@ -661,14 +696,14 @@ local Z = {
 }
 
 local function Tween(instance, props, duration, style, direction)
- local bindings = ThemeBindings[instance]
- if bindings then
-  for property, value in pairs(props) do
-   if bindings[property] and value ~= NullUI.Theme[bindings[property]] then
-    for _, token in ipairs(ThemeTokens) do
-     if value == NullUI.Theme[token] then bindings[property] = token; break end
-    end
-   end
+ local themed = false
+ for property, value in pairs(props) do
+  if type(value) == "table" and value._ThemeToken then
+   local bindings = ThemeBindings[instance] or {}
+   ThemeBindings[instance] = bindings
+   bindings[property] = value._ThemeToken
+   props[property] = ResolveTheme(value._ThemeToken)
+   themed = true
   end
  end
 	local t = TweenService:Create(
@@ -693,7 +728,7 @@ end
 
 local function Stroke(parent, color, thickness, transparency)
 	local s = Instance.new("UIStroke")
-	s.Color = color or Color3.new(1, 1, 1)
+	if color == nil or color == Color3.new(1, 1, 1) then BindTheme(s, "Color", "Border") else s.Color = color end
 	s.Thickness = thickness or 1
 	s.Transparency = transparency or 0.9
 	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -705,7 +740,7 @@ local function GlassLayer(parent, radius, transparency)
 	local glass = Instance.new("Frame")
 	glass.Name = "Glass"
 	glass.Size = UDim2.fromScale(1, 1)
-	glass.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(glass, "BackgroundColor3", "Card")
 	glass.BackgroundTransparency = transparency or 0.985
 	glass.BorderSizePixel = 0
 	glass.ZIndex = Z.Glass
@@ -1189,6 +1224,24 @@ function NullUI:ShowIntro(options)
   skip.ZIndex = 6; skip.Parent = group
   jan:Add(skip.Activated:Connect(function() api:Complete(opts.CompleteText,"skipped") end))
  end
+ local function inherit(object, property, option, token)
+  if opts[option] == nil then BindTheme(object, property, token) end
+ end
+ inherit(group,"BackgroundColor3","BackgroundColor","Background")
+ BindTheme(surface,"BackgroundColor3","Surface")
+ inherit(outline,"Color","TextColor","Text")
+ inherit(highlight,"BackgroundColor3","TextColor","Text")
+ inherit(logo,"BackgroundColor3","TextColor","Text")
+ inherit(icon,"ImageColor3","LogoColor",function(theme) return opts.BackgroundColor or theme.Background end)
+ inherit(title,"TextColor3","TextColor","Text")
+ inherit(subtitle,"TextColor3","SubtitleColor","TextDim")
+ inherit(eyebrow,"TextColor3","SubtitleColor","TextDim")
+ inherit(status,"TextColor3","SubtitleColor","TextDim")
+ inherit(percent,"TextColor3","TextColor","Text")
+ inherit(track,"BackgroundColor3","TextColor","Text")
+ inherit(fill,"BackgroundColor3","Accent","Accent")
+ local skipButton = group:FindFirstChild("Skip")
+ if skipButton then inherit(skipButton,"TextColor3","SubtitleColor","TextDim") end
  animate(group,{GroupTransparency=0},.4); animate(scale,{Scale=1},.5)
  local exiting = false
  jan:Add(RunService.Heartbeat:Connect(function(dt)
@@ -1355,12 +1408,7 @@ local NotifyIcons = {
 	error   = "circle-x",
 }
 
-local NotifyColors = {
-	info    = Color3.fromRGB(120, 170, 255),
-	success = Color3.fromRGB(110, 220, 140),
-	warning = Color3.fromRGB(255, 190, 90),
-	error   = Color3.fromRGB(255, 105, 105),
-}
+local NotifyColors = {info="Info", success="Success", warning="Warning", error="Danger"}
 
 function NullUI:Notify(opts)
 	opts = opts or {}
@@ -1368,7 +1416,8 @@ function NullUI:Notify(opts)
 	local text       = opts.Text or ""
 	local duration   = math.max(0.1, tonumber(opts.Duration) or 4)
 	local notifyType = opts.Type or "info"
-	local color      = opts.Color or NotifyColors[notifyType] or NullUI.Theme.Accent
+	local colorToken = NotifyColors[notifyType] or "Accent"
+	local color = opts.Color or NullUI.Theme[colorToken]
 	local iconName   = opts.Icon or NotifyIcons[notifyType] or NotifyIcons.info
 
 	local holder = GetNotifyHolder()
@@ -1425,7 +1474,7 @@ function NullUI:Notify(opts)
 	local icon = Instance.new("ImageLabel")
 	icon.BackgroundTransparency = 1
 	icon.Image = ResolveIcon(iconName)
-	icon.ImageColor3 = color
+	if opts.Color then icon.ImageColor3 = color else BindTheme(icon, "ImageColor3", colorToken) end
 	icon.ImageTransparency = 1
 	icon.Size = UDim2.fromOffset(16, 16)
 	icon.LayoutOrder = 1
@@ -1485,7 +1534,7 @@ function NullUI:Notify(opts)
 		for i, action in ipairs(opts.Actions) do
 			local btn = Instance.new("TextButton")
 			btn.AutoButtonColor = false
-			btn.BackgroundColor3 = color
+			if opts.Color then btn.BackgroundColor3 = color else BindTheme(btn, "BackgroundColor3", colorToken) end
 			btn.BackgroundTransparency = 1
 			btn.BorderSizePixel = 0
 			btn.Text = ""
@@ -1506,7 +1555,7 @@ function NullUI:Notify(opts)
 			lbl.BackgroundTransparency = 1
 			lbl.FontFace = NullUI.Theme.Font
 			lbl.Text = action.Text or "Action"
-			lbl.TextColor3 = color
+			if opts.Color then lbl.TextColor3 = color else BindTheme(lbl, "TextColor3", colorToken) end
 			lbl.TextTransparency = 1
 			lbl.TextSize = 12
 			lbl.AutomaticSize = Enum.AutomaticSize.None
@@ -1531,7 +1580,7 @@ function NullUI:Notify(opts)
 	end
 
 	local barHolder = Instance.new("Frame")
-	barHolder.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(barHolder, "BackgroundColor3", "Card")
 	barHolder.BackgroundTransparency = 1
 	barHolder.BorderSizePixel = 0
 	barHolder.Size = UDim2.new(1, 0, 0, 3)
@@ -1541,7 +1590,7 @@ function NullUI:Notify(opts)
 	Corner(barHolder, 2)
 
 	local bar = Instance.new("Frame")
-	bar.BackgroundColor3 = color
+	if opts.Color then bar.BackgroundColor3 = color else BindTheme(bar, "BackgroundColor3", colorToken) end
 	bar.BackgroundTransparency = 1
 	bar.BorderSizePixel = 0
 	bar.AnchorPoint = Vector2.new(0, 0.5)
@@ -1552,10 +1601,7 @@ function NullUI:Notify(opts)
 	Corner(bar, 2)
 
 	local barGradient = Instance.new("UIGradient")
-	barGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, color:Lerp(Color3.new(1, 1, 1), 0.4)),
-		ColorSequenceKeypoint.new(1, color),
-	})
+	barGradient.Color = ColorSequence.new(Color3.new(1,1,1), Color3.fromRGB(225,225,225))
 	barGradient.Parent = bar
 
 
@@ -1704,7 +1750,7 @@ function NullUI:Confirm(opts)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = title
-	titleLabel.TextColor3 = danger and NullUI.Theme.Danger or NullUI.Theme.Text
+	BindTheme(titleLabel, "TextColor3", function(theme) return danger and theme.Danger or theme.Text end)
 	titleLabel.TextTransparency = 1
 	titleLabel.TextSize = 18
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -1757,7 +1803,7 @@ function NullUI:Confirm(opts)
 		local btn = Instance.new("TextButton")
 		btn.Text = ""
 		btn.AutoButtonColor = false
-		btn.BackgroundColor3 = tint
+		BindTheme(btn, "BackgroundColor3", function(theme) return (filled and danger) and theme.Danger or theme.Card end)
 		btn.BackgroundTransparency = filled and (danger and 0.55 or 0.82) or 1
 		btn.BorderSizePixel = 0
 		btn.Size = UDim2.new(0.5, -4, 1, 0)
@@ -1771,7 +1817,7 @@ function NullUI:Confirm(opts)
 		lbl.BackgroundTransparency = 1
 		lbl.FontFace = NullUI.Theme.Font
 		lbl.Text = text_
-		lbl.TextColor3 = (filled and danger) and NullUI.Theme.Danger or NullUI.Theme.Text
+		BindTheme(lbl, "TextColor3", function(theme) return (filled and danger) and theme.Danger or theme.Text end)
 		lbl.TextSize = 14
 		lbl.Size = UDim2.fromScale(1, 1)
 		lbl.ZIndex = Z.ModalTop + 2
@@ -1905,7 +1951,7 @@ function NullUI:Modal(opts)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = title
-	titleLabel.TextColor3 = danger and NullUI.Theme.Danger or NullUI.Theme.Text
+	BindTheme(titleLabel, "TextColor3", function(theme) return danger and theme.Danger or theme.Text end)
 	titleLabel.TextTransparency = 1
 	titleLabel.TextSize = 18
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -1973,7 +2019,7 @@ function NullUI:Modal(opts)
 			lbl.BackgroundTransparency = 1
 			lbl.FontFace = NullUI.Theme.FontRegular
 			lbl.Text = string.upper(field.Label)
-			lbl.TextColor3 = danger and NullUI.Theme.Danger or NullUI.Theme.TextDim
+			BindTheme(lbl, "TextColor3", function(theme) return danger and theme.Danger or theme.TextDim end)
 			lbl.TextSize = 11
 			lbl.TextXAlignment = Enum.TextXAlignment.Left
 			lbl.Size = UDim2.new(1, 0, 0, labelH)
@@ -1983,7 +2029,7 @@ function NullUI:Modal(opts)
 		end
 
 		local fieldFrame = Instance.new("Frame")
-		fieldFrame.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(fieldFrame, "BackgroundColor3", "Card")
 		fieldFrame.BackgroundTransparency = 0.93
 		fieldFrame.BorderSizePixel = 0
 		fieldFrame.Size = UDim2.new(1, 0, 0, boxH)
@@ -2004,7 +2050,7 @@ function NullUI:Modal(opts)
 		box.MultiLine = isTextarea
 		box.FontFace = NullUI.Theme.FontRegular
 		box.PlaceholderText = field.Placeholder or ""
-		box.PlaceholderColor3 = Color3.fromRGB(120, 120, 122)
+		BindTheme(box, "PlaceholderColor3", "TextDim")
 		box.Text = tostring(field.Default or "")
 		BindTheme(box, "TextColor3", "Text")
 		box.TextSize = 13
@@ -2026,11 +2072,11 @@ function NullUI:Modal(opts)
 		end
 
 		jan:Add(box.Focused:Connect(function()
-			Tween(fieldStroke, { Color = NullUI.Theme.Accent, Transparency = 0.3 }, 0.15)
+			Tween(fieldStroke, { Color = ThemeValue("Accent"), Transparency = 0.3 }, 0.15)
 			Tween(fieldFrame, { BackgroundTransparency = 0.85 }, 0.15)
 		end))
 		jan:Add(box.FocusLost:Connect(function()
-			Tween(fieldStroke, { Color = Color3.new(1, 1, 1), Transparency = 0.88 }, 0.15)
+			Tween(fieldStroke, { Color = ThemeValue("Border"), Transparency = 0.88 }, 0.15)
 			Tween(fieldFrame, { BackgroundTransparency = 0.93 }, 0.15)
 		end))
 
@@ -2074,7 +2120,7 @@ function NullUI:Modal(opts)
 		lbl.BackgroundTransparency = 1
 		lbl.FontFace = NullUI.Theme.Font
 		lbl.Text = text_
-		lbl.TextColor3 = (filled and danger) and NullUI.Theme.Danger or NullUI.Theme.Text
+		BindTheme(lbl, "TextColor3", function(theme) return (filled and danger) and theme.Danger or theme.Text end)
 		lbl.TextSize = 14
 		lbl.Size = UDim2.fromScale(1, 1)
 		lbl.ZIndex = Z.ModalTop + 2
@@ -2353,7 +2399,7 @@ local function CreateInputPill(card, width)
 	pill.AnchorPoint = Vector2.new(1, 0.5)
 	pill.Position = UDim2.new(1, -14, 0.5, 0)
 	pill.Size = UDim2.fromOffset(width, 26)
-	pill.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(pill, "BackgroundColor3", "Card")
 	pill.BackgroundTransparency = 0.9
 	pill.BorderSizePixel = 0
 	pill.ZIndex = Z.Content + 2
@@ -2578,7 +2624,7 @@ function NullUI:CreateWindow(opts)
 		btn.Name = name
 		btn.Text = ""
 		btn.AutoButtonColor = false
-		btn.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(btn, "BackgroundColor3", "Card")
 		btn.BackgroundTransparency = 1
 		btn.BorderSizePixel = 0
 		btn.Size = UDim2.fromOffset(26, 26)
@@ -2599,11 +2645,11 @@ function NullUI:CreateWindow(opts)
 
 		jan:Add(btn.MouseEnter:Connect(function()
 			Tween(btn, { BackgroundTransparency = 0.9 }, 0.12)
-			Tween(ic, { ImageColor3 = hoverColor or NullUI.Theme.Text }, 0.12)
+			Tween(ic, { ImageColor3 = hoverColor or ThemeValue("Text") }, 0.12)
 		end))
 		jan:Add(btn.MouseLeave:Connect(function()
 			Tween(btn, { BackgroundTransparency = 1 }, 0.12)
-			Tween(ic, { ImageColor3 = NullUI.Theme.TextDim }, 0.12)
+			Tween(ic, { ImageColor3 = ThemeValue("TextDim") }, 0.12)
 		end))
 		return btn
 	end
@@ -2714,7 +2760,7 @@ function NullUI:CreateWindow(opts)
 
 	local tabIndicator = Instance.new("Frame")
 	tabIndicator.Name = "Indicator"
-	tabIndicator.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(tabIndicator, "BackgroundColor3", "Card")
 	tabIndicator.BackgroundTransparency = 1
 	tabIndicator.BorderSizePixel = 0
 	tabIndicator.ZIndex = Z.Window
@@ -2725,7 +2771,7 @@ function NullUI:CreateWindow(opts)
 
 	local divider = Instance.new("Frame")
 	divider.Name = "Divider"
-	divider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(divider, "BackgroundColor3", "Card")
 	divider.BackgroundTransparency = 0.94
 	divider.BorderSizePixel = 0
 	divider.Position = UDim2.new(0, margin + math.clamp(tonumber(opts.TabWidth) or 130, 110, 260) + 14, 0, 58)
@@ -2868,7 +2914,7 @@ function NullUI:CreateWindow(opts)
 	if IsMobileDevice then
 		local mobileToggle = Instance.new("ImageButton")
 		mobileToggle.Name = "MobileToggleButton"
-		mobileToggle.BackgroundColor3 = Color3.fromRGB(1, 1, 1)
+		BindTheme(mobileToggle, "BackgroundColor3", "Background")
 		mobileToggle.BackgroundTransparency = 1
 		mobileToggle.BorderSizePixel = 0
 		-- Alinhado com a barra do Roblox: a ScreenGui comeca abaixo do inset, entao
@@ -3172,7 +3218,7 @@ function Window:AddTabLine()
 	line.AnchorPoint = Vector2.new(0, 0.5)
 	line.Position = UDim2.new(0, 4, 0.5, 0)
 	line.Size = UDim2.new(1, -8, 0, 1)
-	line.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(line, "BackgroundColor3", "Card")
 	line.BackgroundTransparency = 0.92
 	line.BorderSizePixel = 0
 	line.ZIndex = Z.Content
@@ -3217,7 +3263,7 @@ function Window:AddDockButton(opts)
 	btn.Name = opts.Name or "DockButton"
 	btn.Text = ""
 	btn.AutoButtonColor = false
-	btn.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(btn, "BackgroundColor3", "Card")
 	btn.BackgroundTransparency = 0.95
 	btn.BorderSizePixel = 0
 	btn.Size = UDim2.fromOffset(DOCK_ICON_SIZE, DOCK_ICON_SIZE)
@@ -3243,12 +3289,12 @@ function Window:AddDockButton(opts)
 	jan:Add(btn.MouseEnter:Connect(function()
 		if active then return end
 		Tween(btn, { BackgroundTransparency = 0.85 }, 0.12)
-		Tween(icon, { ImageColor3 = NullUI.Theme.Text }, 0.12)
+		Tween(icon, { ImageColor3 = ThemeValue("Text") }, 0.12)
 	end))
 	jan:Add(btn.MouseLeave:Connect(function()
 		if active then return end
 		Tween(btn, { BackgroundTransparency = 0.95 }, 0.12)
-		Tween(icon, { ImageColor3 = NullUI.Theme.TextDim }, 0.12)
+		Tween(icon, { ImageColor3 = ThemeValue("TextDim") }, 0.12)
 	end))
 	jan:Add(btn.MouseButton1Click:Connect(function()
 		if opts.Callback then SpawnCallback(opts.Callback) end
@@ -3260,7 +3306,7 @@ function Window:AddDockButton(opts)
 		SetActive = function(_, isActive)
 			active = isActive and true or false
 			Tween(btn, { BackgroundTransparency = active and 0.8 or 0.95 }, 0.12)
-			Tween(icon, { ImageColor3 = active and NullUI.Theme.Text or NullUI.Theme.TextDim }, 0.12)
+			Tween(icon, { ImageColor3 = active and ThemeValue("Text") or ThemeValue("TextDim") }, 0.12)
 		end,
 	}
 end
@@ -3381,7 +3427,7 @@ function Window:AddDefaultCreditsPanel()
 	local closeBtn = Instance.new("TextButton")
 	closeBtn.Text = ""
 	closeBtn.AutoButtonColor = false
-	closeBtn.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(closeBtn, "BackgroundColor3", "Card")
 	closeBtn.BackgroundTransparency = 1
 	closeBtn.BorderSizePixel = 0
 	closeBtn.AnchorPoint = Vector2.new(1, 0.5)
@@ -3405,7 +3451,7 @@ function Window:AddDefaultCreditsPanel()
 	closeBtn.MouseButton1Click:Connect(function() panel.Close() end)
 
 	local divider = Instance.new("Frame")
-	divider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(divider, "BackgroundColor3", "Card")
 	divider.BackgroundTransparency = 0.94
 	divider.BorderSizePixel = 0
 	divider.Position = UDim2.fromOffset(0, HEADER_H)
@@ -3443,7 +3489,7 @@ function Window:AddDefaultCreditsPanel()
 	for i, credit in ipairs(CREDITS) do
 		local row = Instance.new("Frame")
 		row.Name = credit.Name
-		row.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(row, "BackgroundColor3", "Card")
 		row.BackgroundTransparency = 0.96
 		row.BorderSizePixel = 0
 		row.LayoutOrder = i
@@ -3456,7 +3502,7 @@ function Window:AddDefaultCreditsPanel()
 		rowCorner.Parent = row
 
 		local rowStroke = Instance.new("UIStroke")
-		rowStroke.Color = Color3.new(1, 1, 1)
+		BindTheme(rowStroke, "Color", "Border")
 		rowStroke.Transparency = 0.94
 		rowStroke.Thickness = 1
 		rowStroke.Parent = row
@@ -3546,7 +3592,7 @@ function Window:AddTab(nameOrOpts)
 	tabButton.Name = name
 	tabButton.Text = ""
 	tabButton.AutoButtonColor = false
-	tabButton.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(tabButton, "BackgroundColor3", "Card")
 	tabButton.BackgroundTransparency = 1
 	tabButton.BorderSizePixel = 0
 	tabButton.Size = UDim2.new(1, 0, 0, 34)
@@ -3592,7 +3638,7 @@ function Window:AddTab(nameOrOpts)
 		local lockIcon = Instance.new("ImageLabel")
 		lockIcon.BackgroundTransparency = 1
 		lockIcon.Image = ResolveIcon("lock")
-		lockIcon.ImageColor3 = glowColor
+		if opts.GlowColor then lockIcon.ImageColor3 = glowColor else BindTheme(lockIcon, "ImageColor3", "Accent") end
 		lockIcon.Size = UDim2.fromOffset(7, 7)
 		lockIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 		lockIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -3756,9 +3802,9 @@ function Window:AddTab(nameOrOpts)
 
 		for _, t in pairs(self._tabs) do
 			local isSelected = (t == tabObj)
-			Tween(t._label, { TextColor3 = isSelected and NullUI.Theme.Text or NullUI.Theme.TextDim }, 0.22)
+			Tween(t._label, { TextColor3 = isSelected and ThemeValue("Text") or ThemeValue("TextDim") }, 0.22)
 			if t._icon then
-				Tween(t._icon, { ImageColor3 = isSelected and NullUI.Theme.Text or NullUI.Theme.TextDim }, 0.22)
+				Tween(t._icon, { ImageColor3 = isSelected and ThemeValue("Text") or ThemeValue("TextDim") }, 0.22)
 			end
 			if not isSelected then
 				Tween(t._button, { BackgroundTransparency = 1 }, 0.15)
@@ -3982,7 +4028,7 @@ function Window:_PromptTabPassword(tabObj, callback)
 	subtitle.Parent = dialog
 
 	local fieldHolder = Instance.new("Frame")
-	fieldHolder.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(fieldHolder, "BackgroundColor3", "Card")
 	fieldHolder.BackgroundTransparency = 0.94
 	fieldHolder.BorderSizePixel = 0
 	fieldHolder.ClipsDescendants = true
@@ -4050,7 +4096,7 @@ function Window:_PromptTabPassword(tabObj, callback)
 	rememberSwitch.AnchorPoint = Vector2.new(0, 0.5)
 	rememberSwitch.Position = UDim2.new(0, 0, 0.5, 0)
 	rememberSwitch.Size = UDim2.fromOffset(32, 18)
-	rememberSwitch.BackgroundColor3 = remember and Color3.new(1, 1, 1) or Color3.fromRGB(60, 60, 60)
+	BindTheme(rememberSwitch, "BackgroundColor3", function(theme) return remember and theme.ToggleOn or theme.ToggleOff end)
 	rememberSwitch.BorderSizePixel = 0
 	rememberSwitch.ZIndex = Z.ModalTop + 2
 	rememberSwitch.Parent = rememberRow
@@ -4073,7 +4119,7 @@ function Window:_PromptTabPassword(tabObj, callback)
 	rememberKnob.Size = UDim2.fromOffset(14, 14)
 	rememberKnob.AnchorPoint = Vector2.new(0, 0.5)
 	rememberKnob.Position = remember and UDim2.new(1, -16, 0.5, 0) or UDim2.new(0, 2, 0.5, 0)
-	rememberKnob.BackgroundColor3 = remember and Color3.fromRGB(18, 18, 18) or Color3.new(1, 1, 1)
+	BindTheme(rememberKnob, "BackgroundColor3", function(theme) return remember and theme.ToggleKnobOn or theme.ToggleKnob end)
 	rememberKnob.BorderSizePixel = 0
 	rememberKnob.ZIndex = Z.ModalTop + 3
 	rememberKnob.Parent = rememberSwitch
@@ -4115,7 +4161,7 @@ function Window:_PromptTabPassword(tabObj, callback)
 		local btn = Instance.new("TextButton")
 		btn.Text = ""
 		btn.AutoButtonColor = false
-		btn.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(btn, "BackgroundColor3", "Card")
 		btn.BackgroundTransparency = filled and 0.82 or 1
 		btn.BorderSizePixel = 0
 		btn.Size = UDim2.new(0.5, -4, 1, 0)
@@ -4165,9 +4211,9 @@ function Window:_PromptTabPassword(tabObj, callback)
 	end
 
 	local function shakeError()
-		Tween(fieldStroke, { Color = NullUI.Theme.Danger, Transparency = 0.4 }, 0.12)
+		Tween(fieldStroke, { Color = ThemeValue("Danger"), Transparency = 0.4 }, 0.12)
 		placeholderLabel.Text = "Incorrect password"
-		Tween(placeholderLabel, { TextColor3 = NullUI.Theme.Danger }, 0.12)
+		Tween(placeholderLabel, { TextColor3 = ThemeValue("Danger") }, 0.12)
 
 		local baseX = dialog.Position.X.Offset
 		local seq = { 8, -7, 5, -4, 0 }
@@ -4184,8 +4230,8 @@ function Window:_PromptTabPassword(tabObj, callback)
 
 		task.delay(1.4, function()
 			if closed then return end
-			Tween(fieldStroke, { Color = Color3.new(1, 1, 1), Transparency = 0.88 }, 0.3)
-			Tween(placeholderLabel, { TextColor3 = NullUI.Theme.TextDim }, 0.3)
+			Tween(fieldStroke, { Color = ThemeValue("Border"), Transparency = 0.88 }, 0.3)
+			Tween(placeholderLabel, { TextColor3 = ThemeValue("TextDim") }, 0.3)
 			task.delay(0.3, function()
 				if not closed then placeholderLabel.Text = "Password" end
 			end)
@@ -4399,7 +4445,7 @@ function Window:_OpenSearch()
 	inputSurface.Name = "SearchInputSurface"
 	inputSurface.Position = UDim2.fromOffset(12, 12)
 	inputSurface.Size = UDim2.new(1, -24, 0, 36)
-	inputSurface.BackgroundColor3 = Color3.fromRGB(16, 16, 18)
+	BindTheme(inputSurface, "BackgroundColor3", "Surface")
 	inputSurface.BorderSizePixel = 0
 	inputSurface.ZIndex = Z.Modal + 1
 	inputSurface.Parent = panel
@@ -4420,7 +4466,7 @@ function Window:_OpenSearch()
 	closeBtn.Name = "CloseButton"
 	closeBtn.Text = ""
 	closeBtn.AutoButtonColor = false
-	closeBtn.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(closeBtn, "BackgroundColor3", "Card")
 	closeBtn.BackgroundTransparency = 1
 	closeBtn.BorderSizePixel = 0
 	closeBtn.AnchorPoint = Vector2.new(1, 0.5)
@@ -4442,11 +4488,11 @@ function Window:_OpenSearch()
 
 	closeBtn.MouseEnter:Connect(function()
 		Tween(closeBtn, { BackgroundTransparency = 0.9 }, 0.12)
-		Tween(closeIcon, { ImageColor3 = NullUI.Theme.Text }, 0.12)
+		Tween(closeIcon, { ImageColor3 = ThemeValue("Text") }, 0.12)
 	end)
 	closeBtn.MouseLeave:Connect(function()
 		Tween(closeBtn, { BackgroundTransparency = 1 }, 0.12)
-		Tween(closeIcon, { ImageColor3 = NullUI.Theme.TextDim }, 0.12)
+		Tween(closeIcon, { ImageColor3 = ThemeValue("TextDim") }, 0.12)
 	end)
 	closeBtn.MouseButton1Click:Connect(closeSearch)
 
@@ -4457,7 +4503,7 @@ function Window:_OpenSearch()
 	box.PlaceholderText = "Search everything..."
 	box.Text = ""
 	BindTheme(box, "TextColor3", "Text")
-	box.PlaceholderColor3 = NullUI.Theme.TextDim
+	BindTheme(box, "PlaceholderColor3", "TextDim")
 	box.TextSize = 14
 	box.ClearTextOnFocus = false
 	box.TextXAlignment = Enum.TextXAlignment.Left
@@ -4584,7 +4630,7 @@ function Window:_OpenSearch()
 			local row = Instance.new("TextButton")
 			row.Text = ""
 			row.AutoButtonColor = false
-			row.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(row, "BackgroundColor3", "Card")
 			row.BackgroundTransparency = 1
 			row.BorderSizePixel = 0
 			row.Size = UDim2.new(1, 0, 0, ROW_H)
@@ -4750,7 +4796,7 @@ function Tab:AddSubTab(nameOrOpts)
 
 		self._subTabIndicator = Instance.new("Frame")
 		self._subTabIndicator.Name = "Indicator"
-		self._subTabIndicator.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(self._subTabIndicator, "BackgroundColor3", "Card")
 		self._subTabIndicator.BackgroundTransparency = 1
 		self._subTabIndicator.BorderSizePixel = 0
 		self._subTabIndicator.ZIndex = Z.Window
@@ -4814,7 +4860,7 @@ function Tab:AddSubTab(nameOrOpts)
 	btn.Name = "SubTab_" .. title:gsub("%s", "")
 	btn.Text = ""
 	btn.AutoButtonColor = false
-	btn.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(btn, "BackgroundColor3", "Card")
 	btn.BackgroundTransparency = 1
 	btn.BorderSizePixel = 0
 	btn.AutomaticSize = Enum.AutomaticSize.X
@@ -4992,9 +5038,9 @@ function Tab:SelectSubTab(idx)
 		if not sel then
 			Tween(st.Button, { BackgroundTransparency = 1 }, 0.15)
 		end
-		Tween(st.Label, { TextColor3 = sel and NullUI.Theme.Text or NullUI.Theme.TextDim }, 0.22)
+		Tween(st.Label, { TextColor3 = sel and ThemeValue("Text") or ThemeValue("TextDim") }, 0.22)
 		if st.Icon then
-			Tween(st.Icon, { ImageColor3 = sel and NullUI.Theme.Text or NullUI.Theme.TextDim }, 0.22)
+			Tween(st.Icon, { ImageColor3 = sel and ThemeValue("Text") or ThemeValue("TextDim") }, 0.22)
 		end
 	end
 
@@ -5127,7 +5173,7 @@ function Tab:AddDivider()
 	line.AnchorPoint = Vector2.new(0, 0.5)
 	line.Position = UDim2.new(0, 0, 0.5, 0)
 	line.Size = UDim2.new(1, 0, 0, 1)
-	line.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(line, "BackgroundColor3", "Card")
 	line.BackgroundTransparency = 0.92
 	line.BorderSizePixel = 0
 	line.ZIndex = Z.Content
@@ -5153,7 +5199,7 @@ function Tab:AddLineText(text)
 	left.AnchorPoint = Vector2.new(0, 0.5)
 	left.Position = UDim2.fromScale(0, 0.5)
 	left.Size = UDim2.new(0.5, -10, 0, 1)
-	left.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(left, "BackgroundColor3", "Card")
 	left.BackgroundTransparency = 0.92
 	left.BorderSizePixel = 0
 	left.ZIndex = Z.Content
@@ -5164,7 +5210,7 @@ function Tab:AddLineText(text)
 	right.AnchorPoint = Vector2.new(1, 0.5)
 	right.Position = UDim2.fromScale(1, 0.5)
 	right.Size = UDim2.new(0.5, -10, 0, 1)
-	right.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(right, "BackgroundColor3", "Card")
 	right.BackgroundTransparency = 0.92
 	right.BorderSizePixel = 0
 	right.ZIndex = Z.Content
@@ -5331,7 +5377,7 @@ local function BuildStarRow(parent, layoutOrder, maxStars, starColor, starSize, 
 		for i, button in ipairs(stars) do
 			local on = i <= count
 			button.Image = on and starFilled or starOutline
-			Tween(button, { ImageColor3 = on and starColor or NullUI.Theme.TextDim }, 0.12)
+			Tween(button, { ImageColor3 = on and starColor or ThemeValue("TextDim") }, 0.12)
 		end
 	end
 
@@ -5535,7 +5581,7 @@ local function BuildFeedbackRow(parent, layoutOrder, rowH, placeholder, buttonIc
 
 	local pill = Instance.new("Frame")
 	pill.Name = "Pill"
-	pill.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(pill, "BackgroundColor3", "Card")
 	pill.BackgroundTransparency = 0.95
 	pill.BorderSizePixel = 0
 	pill.Size = UDim2.new(1, -(rowH + 6), 1, 0)
@@ -5554,7 +5600,7 @@ local function BuildFeedbackRow(parent, layoutOrder, rowH, placeholder, buttonIc
 	box.ClearTextOnFocus = false
 	box.FontFace = NullUI.Theme.FontRegular
 	box.PlaceholderText = placeholder or "Give us some feedback!"
-	box.PlaceholderColor3 = Color3.fromRGB(120, 120, 122)
+	BindTheme(box, "PlaceholderColor3", "TextDim")
 	box.Text = ""
 	BindTheme(box, "TextColor3", "Text")
 	box.TextSize = 13
@@ -5567,17 +5613,17 @@ local function BuildFeedbackRow(parent, layoutOrder, rowH, placeholder, buttonIc
 	box.Parent = pill
 
 	box.Focused:Connect(function()
-		Tween(pillStroke, { Color = NullUI.Theme.Accent, Transparency = 0.3 }, 0.15)
+		Tween(pillStroke, { Color = ThemeValue("Accent"), Transparency = 0.3 }, 0.15)
 	end)
 	box.FocusLost:Connect(function()
-		Tween(pillStroke, { Color = Color3.new(1, 1, 1), Transparency = 0.9 }, 0.15)
+		Tween(pillStroke, { Color = ThemeValue("Border"), Transparency = 0.9 }, 0.15)
 	end)
 
 	local sendBtn = Instance.new("TextButton")
 	sendBtn.Name = "Send"
 	sendBtn.Text = ""
 	sendBtn.AutoButtonColor = false
-	sendBtn.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(sendBtn, "BackgroundColor3", "Card")
 	sendBtn.BackgroundTransparency = 0.9
 	sendBtn.BorderSizePixel = 0
 	sendBtn.AnchorPoint = Vector2.new(1, 0)
@@ -5815,19 +5861,19 @@ function Tab:AddButton(opts)
 
 	click.MouseEnter:Connect(function()
 		Tween(card, { BackgroundTransparency = 0.9 }, 0.15)
-		Tween(chev, { ImageColor3 = NullUI.Theme.Text, Position = UDim2.new(1, -12, 0.5, 0) }, 0.15)
+		Tween(chev, { ImageColor3 = ThemeValue("Text"), Position = UDim2.new(1, -12, 0.5, 0) }, 0.15)
 	end)
 	click.MouseLeave:Connect(function()
 		Tween(card, { BackgroundTransparency = 0.96 }, 0.15)
-		Tween(chev, { ImageColor3 = NullUI.Theme.TextDim, Position = UDim2.new(1, -16, 0.5, 0) }, 0.15)
+		Tween(chev, { ImageColor3 = ThemeValue("TextDim"), Position = UDim2.new(1, -16, 0.5, 0) }, 0.15)
 	end)
 	click.MouseButton1Click:Connect(function()
 		Tween(card, { BackgroundTransparency = 0.8 }, 0.08)
-		Tween(chev, { ImageColor3 = NullUI.Theme.Accent }, 0.08)
+		Tween(chev, { ImageColor3 = ThemeValue("Accent") }, 0.08)
 		task.delay(0.08, function()
 			if not card.Parent then return end
 			Tween(card, { BackgroundTransparency = 0.9 }, 0.15)
-			Tween(chev, { ImageColor3 = NullUI.Theme.Text }, 0.15)
+			Tween(chev, { ImageColor3 = ThemeValue("Text") }, 0.15)
 		end)
 		if opts.Callback then SpawnCallback(opts.Callback) end
 	end)
@@ -5932,11 +5978,11 @@ function Tab:AddCard(opts)
 
 		click.MouseEnter:Connect(function()
 			Tween(card, { BackgroundTransparency = 0.9 }, 0.15)
-			Tween(chev, { ImageColor3 = NullUI.Theme.Text, Position = UDim2.new(1, -12, 0.5, 0) }, 0.15)
+			Tween(chev, { ImageColor3 = ThemeValue("Text"), Position = UDim2.new(1, -12, 0.5, 0) }, 0.15)
 		end)
 		click.MouseLeave:Connect(function()
 			Tween(card, { BackgroundTransparency = 0.96 }, 0.15)
-			Tween(chev, { ImageColor3 = NullUI.Theme.TextDim, Position = UDim2.new(1, -16, 0.5, 0) }, 0.15)
+			Tween(chev, { ImageColor3 = ThemeValue("TextDim"), Position = UDim2.new(1, -16, 0.5, 0) }, 0.15)
 		end)
 		click.MouseButton1Click:Connect(function()
 			Tween(card, { BackgroundTransparency = 0.8 }, 0.08)
@@ -5952,7 +5998,7 @@ function Tab:AddCard(opts)
 		footerBtn.Name = "FooterButton"
 		footerBtn.Text = ""
 		footerBtn.AutoButtonColor = false
-		footerBtn.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(footerBtn, "BackgroundColor3", "Card")
 		footerBtn.BackgroundTransparency = 0.85
 		footerBtn.BorderSizePixel = 0
 		footerBtn.Position = UDim2.new(0, 10, 1, -(BUTTON_H + BUTTON_MARGIN))
@@ -6003,7 +6049,7 @@ function Tab:AddCard(opts)
 
 		local divider = Instance.new("Frame")
 		divider.Name = "Divider"
-		divider.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(divider, "BackgroundColor3", "Card")
 		divider.BackgroundTransparency = 0.94
 		divider.BorderSizePixel = 0
 		divider.Size = UDim2.new(1, 0, 0, 1)
@@ -6076,10 +6122,8 @@ function Tab:AddCard(opts)
 end
 
 local CHANGELOG_TYPES = {
-	Added   = { Color = Color3.fromRGB(120, 210, 140), Icon = "plus" },
-	Fixed   = { Color = Color3.fromRGB(120, 170, 255), Icon = "wrench" },
-	Changed = { Color = Color3.fromRGB(255, 190, 90),  Icon = "refresh-cw" },
-	Removed = { Color = Color3.fromRGB(230, 120, 120), Icon = "minus" },
+ Added={Color="Success",Icon="plus"}, Fixed={Color="Info",Icon="wrench"},
+ Changed={Color="Warning",Icon="refresh-cw"}, Removed={Color="Danger",Icon="minus"},
 }
 
 function Tab:AddChangelogEntry(opts)
@@ -6161,7 +6205,7 @@ function Tab:AddChangelogEntry(opts)
 		row.Parent = rowsHolder
 
 		local pill = Instance.new("Frame")
-		pill.BackgroundColor3 = meta.Color
+		BindTheme(pill, "BackgroundColor3", meta.Color)
 		pill.BackgroundTransparency = 0.85
 		pill.BorderSizePixel = 0
 		pill.AnchorPoint = Vector2.zero
@@ -6181,7 +6225,7 @@ function Tab:AddChangelogEntry(opts)
 		local pillIcon = Instance.new("ImageLabel")
 		pillIcon.BackgroundTransparency = 1
 		pillIcon.Image = ResolveIcon(meta.Icon)
-		pillIcon.ImageColor3 = meta.Color
+		BindTheme(pillIcon, "ImageColor3", meta.Color)
 		pillIcon.Size = UDim2.fromOffset(9, 9)
 		pillIcon.LayoutOrder = 1
 		pillIcon.ZIndex = Z.Content + 3
@@ -6191,7 +6235,7 @@ function Tab:AddChangelogEntry(opts)
 		pillLabel.BackgroundTransparency = 1
 		pillLabel.FontFace = NullUI.Theme.Font
 		pillLabel.Text = string.upper(kind)
-		pillLabel.TextColor3 = meta.Color
+		BindTheme(pillLabel, "TextColor3", meta.Color)
 		pillLabel.TextSize = 9
 		pillLabel.AutomaticSize = Enum.AutomaticSize.X
 		pillLabel.Size = UDim2.fromOffset(0, 12)
@@ -6233,7 +6277,7 @@ function Tab:AddChangelogEntry(opts)
 		if i < #changes then
 			local separator = Instance.new("Frame")
 			separator.Name = "Separator" .. i
-			separator.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(separator, "BackgroundColor3", "Card")
 			separator.BackgroundTransparency = 0.93
 			separator.BorderSizePixel = 0
 			separator.Size = UDim2.new(1, 0, 0, 1)
@@ -6317,7 +6361,7 @@ function Tab:AddLoadoutGroup(opts)
 	for i, iconAsset in ipairs(icons) do
 		local slot = Instance.new("Frame")
 		slot.Name = "Slot" .. i
-		slot.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(slot, "BackgroundColor3", "Card")
 		slot.BackgroundTransparency = 0.95
 		slot.BorderSizePixel = 0
 		slot.ClipsDescendants = true
@@ -6343,7 +6387,7 @@ function Tab:AddLoadoutGroup(opts)
 	btn.Name = "EquipButton"
 	btn.Text = ""
 	btn.AutoButtonColor = false
-	btn.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(btn, "BackgroundColor3", "Card")
 	btn.BackgroundTransparency = 0.92
 	btn.BorderSizePixel = 0
 	btn.Position = UDim2.fromOffset(0, HEADER_H + GAP1 + ICON_SIZE + GAP2)
@@ -6477,7 +6521,7 @@ function Tab:AddInfoGrid(opts)
 		for i, item in ipairs(items) do
 			local chip = Instance.new("Frame")
 			chip.Name = "Chip" .. i
-			chip.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(chip, "BackgroundColor3", "Card")
 			chip.BackgroundTransparency = 0.95
 			chip.BorderSizePixel = 0
 			chip.LayoutOrder = i
@@ -6695,7 +6739,7 @@ function Tab:AddLeaderboard(opts)
 	revealBtn.Name = "RevealToggle"
 	revealBtn.Text = ""
 	revealBtn.AutoButtonColor = false
-	revealBtn.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(revealBtn, "BackgroundColor3", "Card")
 	revealBtn.BackgroundTransparency = 1
 	revealBtn.BorderSizePixel = 0
 	revealBtn.AnchorPoint = Vector2.new(1, 0)
@@ -6717,15 +6761,15 @@ function Tab:AddLeaderboard(opts)
 
 	jan:Add(revealBtn.MouseEnter:Connect(function()
 		Tween(revealBtn, { BackgroundTransparency = 0.9 }, 0.12)
-		Tween(revealIcon, { ImageColor3 = NullUI.Theme.Text }, 0.12)
+		Tween(revealIcon, { ImageColor3 = ThemeValue("Text") }, 0.12)
 	end))
 	jan:Add(revealBtn.MouseLeave:Connect(function()
 		Tween(revealBtn, { BackgroundTransparency = 1 }, 0.12)
-		Tween(revealIcon, { ImageColor3 = NullUI.Theme.TextDim }, 0.12)
+		Tween(revealIcon, { ImageColor3 = ThemeValue("TextDim") }, 0.12)
 	end))
 
 	local divider = Instance.new("Frame")
-	divider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(divider, "BackgroundColor3", "Card")
 	divider.BackgroundTransparency = 0.92
 	divider.BorderSizePixel = 0
 	divider.Position = UDim2.fromOffset(0, PAD + HEADER_H + 8)
@@ -6791,7 +6835,7 @@ function Tab:AddLeaderboard(opts)
 		local row = Instance.new("Frame")
 		row.Name = "Row" .. index
 		row.Active = true
-		row.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(row, "BackgroundColor3", "Card")
 		row.BackgroundTransparency = item.IsYou and 0.9 or 0.96
 		row.BorderSizePixel = 0
 		row.LayoutOrder = index
@@ -6814,7 +6858,7 @@ function Tab:AddLeaderboard(opts)
 		badge.AnchorPoint = Vector2.new(0, 0.5)
 		badge.Position = UDim2.new(0, 0, 0.5, 0)
 		badge.Size = UDim2.fromOffset(28, 28)
-		badge.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(badge, "BackgroundColor3", "Card")
 		badge.BackgroundTransparency = 0.94
 		badge.BorderSizePixel = 0
 		badge.ZIndex = Z.Content + 3
@@ -6848,7 +6892,7 @@ function Tab:AddLeaderboard(opts)
 		avatarHolder.AnchorPoint = Vector2.new(0, 0.5)
 		avatarHolder.Position = UDim2.new(0, 34, 0.5, 0)
 		avatarHolder.Size = UDim2.fromOffset(28, 28)
-		avatarHolder.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(avatarHolder, "BackgroundColor3", "Card")
 		avatarHolder.BackgroundTransparency = 0.94
 		avatarHolder.BorderSizePixel = 0
 		avatarHolder.ClipsDescendants = true
@@ -6980,13 +7024,13 @@ function Tab:AddGradientCard(opts)
 	opts = opts or {}
 	local title = opts.Title or "Card"
 	local hasDesc = opts.Description and opts.Description ~= ""
-	local colorA = opts.ColorA or Color3.fromRGB(88, 101, 242)
-	local colorB = opts.ColorB or Color3.fromRGB(52, 58, 138)
+	local colorA = opts.ColorA or NullUI.Theme.Surface
+	local colorB = opts.ColorB or NullUI.Theme.Background
 	local height = hasDesc and 56 or 44
 
 	local card = Instance.new("Frame")
 	card.Name = title .. "GradientCard"
-	card.BackgroundColor3 = colorA
+	card.BackgroundColor3 = Color3.new(1,1,1)
 	card.BorderSizePixel = 0
 	card.Size = UDim2.new(1, 0, 0, height)
 	card.ZIndex = Z.Content
@@ -6994,7 +7038,7 @@ function Tab:AddGradientCard(opts)
 	Corner(card, NullUI.Theme.CornerRadiusSm)
 
 	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new(colorA, colorB)
+	BindTheme(gradient, "Color", function(theme) return ColorSequence.new(opts.ColorA or theme.Surface, opts.ColorB or theme.Background) end)
 	gradient.Rotation = 100
 	gradient.Parent = card
 
@@ -7007,7 +7051,7 @@ function Tab:AddGradientCard(opts)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = title
-	titleLabel.TextColor3 = Color3.new(1, 1, 1)
+	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -7021,7 +7065,7 @@ function Tab:AddGradientCard(opts)
 		descLabel.BackgroundTransparency = 1
 		descLabel.FontFace = NullUI.Theme.FontRegular
 		descLabel.Text = opts.Description
-		descLabel.TextColor3 = Color3.new(1, 1, 1)
+		BindTheme(descLabel, "TextColor3", "Text")
 		descLabel.TextTransparency = 0.3
 		descLabel.TextSize = 12
 		descLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -7036,7 +7080,7 @@ function Tab:AddGradientCard(opts)
 		local chev = Instance.new("ImageLabel")
 		chev.BackgroundTransparency = 1
 		chev.Image = ResolveIcon("chevron-right")
-		chev.ImageColor3 = Color3.new(1, 1, 1)
+		BindTheme(chev, "ImageColor3", "Text")
 		chev.ImageTransparency = 0.2
 		chev.Size = UDim2.fromOffset(14, 14)
 		chev.AnchorPoint = Vector2.new(1, 0.5)
@@ -7046,7 +7090,7 @@ function Tab:AddGradientCard(opts)
 
 		local veil = Instance.new("Frame")
 		veil.Name = "HoverVeil"
-		veil.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(veil, "BackgroundColor3", "Card")
 		veil.BackgroundTransparency = 1
 		veil.BorderSizePixel = 0
 		veil.Size = UDim2.fromScale(1, 1)
@@ -7108,16 +7152,17 @@ function Tab:AddToggle(opts)
 	-- through the control instead of turning into a flat gray pill.
 	local switchStroke = Stroke(
 		switchBg,
-		state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(205, 212, 209),
+		NullUI.Theme.Border,
 		1,
 		state and 0.88 or 0.72
 	)
 
+	BindTheme(switchStroke, "Color", "Border")
 	local switchGradient = Instance.new("UIGradient")
 	switchGradient.Rotation = 90
 	switchGradient.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(190, 198, 194)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 235, 235)),
 	})
 	switchGradient.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, state and 0 or 0.76),
@@ -7154,11 +7199,11 @@ function Tab:AddToggle(opts)
 		local anim = 0.28
 		local style, dir = Enum.EasingStyle.Quint, Enum.EasingDirection.InOut
 		Tween(switchBg, {
-			BackgroundColor3 = state and NullUI.Theme.ToggleOn or NullUI.Theme.ToggleOff,
+			BackgroundColor3 = state and ThemeValue("ToggleOn") or ThemeValue("ToggleOff"),
 			BackgroundTransparency = state and 0 or 0.32,
 		}, anim, style, dir)
 		Tween(switchStroke, {
-			Color = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(205, 212, 209),
+			Color = ThemeValue("Border"),
 			Transparency = state and 0.88 or 0.72,
 		}, anim, style, dir)
 		switchGradient.Transparency = NumberSequence.new({
@@ -7166,7 +7211,7 @@ function Tab:AddToggle(opts)
 			NumberSequenceKeypoint.new(1, state and 0 or 0.94),
 		})
 		Tween(knob, {
-			BackgroundColor3 = state and NullUI.Theme.ToggleKnobOn or NullUI.Theme.ToggleKnob,
+			BackgroundColor3 = state and ThemeValue("ToggleKnobOn") or ThemeValue("ToggleKnob"),
 			BackgroundTransparency = state and 0 or 0.06,
 			Position = state and UDim2.new(1, -19, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
 		}, anim, style, dir)
@@ -7297,7 +7342,7 @@ function Tab:AddSlider(opts)
 	track.Size = UDim2.new(1, -28, 0, 6)
 	-- Nearly transparent white overlay: no gray tint, so the window background
 	-- remains visible through the unfilled portion of the slider.
-	track.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(track, "BackgroundColor3", "Card")
 	track.BackgroundTransparency = 0.91
 	track.BorderSizePixel = 0
 	track.ZIndex = Z.Content + 1
@@ -7323,7 +7368,7 @@ function Tab:AddSlider(opts)
 	knob.ZIndex = Z.Content + 3
 	knob.Parent = track
 	Corner(knob, 6)
-	Stroke(knob, Color3.fromRGB(16, 16, 16), 2, 0)
+	BindTheme(Stroke(knob, NullUI.Theme.Background, 2, 0), "Color", "Background")
 
 	if hasDesc then
 		local lastW = -1
@@ -7634,7 +7679,7 @@ function Tab:AddDropdown(opts)
 		if not entry then return end
 		local sel = isOptionSelected(name)
 		Tween(entry.button, { BackgroundTransparency = sel and 0.78 or 0.96 }, 0.1)
-		Tween(entry.label, { TextColor3 = sel and NullUI.Theme.Text or NullUI.Theme.TextDim }, 0.1)
+		Tween(entry.label, { TextColor3 = sel and ThemeValue("Text") or ThemeValue("TextDim") }, 0.1)
 		if entry.check then
 			Tween(entry.check, { BackgroundTransparency = sel and 0.05 or 0.9 }, 0.1)
 		end
@@ -7814,7 +7859,7 @@ function Tab:AddDropdown(opts)
 			optLabel.BackgroundTransparency = 1
 			optLabel.FontFace = NullUI.Theme.FontRegular
 			optLabel.Text = tostring(optionName)
-			optLabel.TextColor3 = isOptionSelected(optionName) and NullUI.Theme.Text or NullUI.Theme.TextDim
+			BindTheme(optLabel, "TextColor3", function(theme) return isOptionSelected(optionName) and theme.Text or theme.TextDim end)
 			optLabel.TextSize = 13
 			optLabel.TextXAlignment = Enum.TextXAlignment.Left
 			optLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -7831,7 +7876,7 @@ function Tab:AddDropdown(opts)
 				check.AnchorPoint = Vector2.new(1, 0.5)
 				check.Position = UDim2.new(1, -10, 0.5, 0)
 				check.Size = UDim2.fromOffset(14, 14)
-				check.BackgroundColor3 = Color3.new(1, 1, 1)
+				BindTheme(check, "BackgroundColor3", "Card")
 				check.BackgroundTransparency = isOptionSelected(optionName) and 0.05 or 0.9
 				check.BorderSizePixel = 0
 				check.ZIndex = Z.Popup + 3
@@ -8000,7 +8045,7 @@ function Tab:AddTextbox(opts)
 	box.ClearTextOnFocus = false
 	box.FontFace = NullUI.Theme.FontRegular
 	box.PlaceholderText = opts.Placeholder or ""
-	box.PlaceholderColor3 = Color3.fromRGB(120, 120, 122)
+	BindTheme(box, "PlaceholderColor3", "TextDim")
 	box.Text = opts.Default or ""
 	BindTheme(box, "TextColor3", "Text")
 	box.TextSize = 13
@@ -8044,7 +8089,7 @@ function Tab:AddTextbox(opts)
 	task.defer(function() resizePill(false) end)
 
 	box.Focused:Connect(function()
-		Tween(pillStroke, { Color = NullUI.Theme.Accent, Transparency = 0.3 }, 0.15)
+		Tween(pillStroke, { Color = ThemeValue("Accent"), Transparency = 0.3 }, 0.15)
 		Tween(pill, { BackgroundTransparency = 0.82 }, 0.15)
 	end)
 
@@ -8055,7 +8100,7 @@ function Tab:AddTextbox(opts)
 	end
 
 	box.FocusLost:Connect(function(enterPressed)
-		Tween(pillStroke, { Color = Color3.new(1, 1, 1), Transparency = 0.88 }, 0.15)
+		Tween(pillStroke, { Color = ThemeValue("Border"), Transparency = 0.88 }, 0.15)
 		Tween(pill, { BackgroundTransparency = 0.9 }, 0.15)
 		fireChanged(box.Text, enterPressed)
 	end)
@@ -8096,7 +8141,7 @@ local function MiniField(parent, label, width, zBase)
 	local field = Instance.new("Frame")
 	field.Position = UDim2.fromOffset(0, 12)
 	field.Size = UDim2.new(1, 0, 0, 24)
-	field.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(field, "BackgroundColor3", "Card")
 	field.BackgroundTransparency = 0.92
 	field.BorderSizePixel = 0
 	field.ZIndex = zBase + 2
@@ -8118,11 +8163,11 @@ local function MiniField(parent, label, width, zBase)
 	box.Parent = field
 
 	box.Focused:Connect(function()
-		Tween(fieldStroke, { Color = NullUI.Theme.Accent, Transparency = 0.3 }, 0.15)
+		Tween(fieldStroke, { Color = ThemeValue("Accent"), Transparency = 0.3 }, 0.15)
 		Tween(field, { BackgroundTransparency = 0.84 }, 0.15)
 	end)
 	box.FocusLost:Connect(function()
-		Tween(fieldStroke, { Color = Color3.new(1, 1, 1), Transparency = 0.88 }, 0.15)
+		Tween(fieldStroke, { Color = ThemeValue("Border"), Transparency = 0.88 }, 0.15)
 		Tween(field, { BackgroundTransparency = 0.92 }, 0.15)
 	end)
 
@@ -8147,7 +8192,7 @@ function Tab:AddColorPicker(opts)
 	swatchHolder.AnchorPoint = Vector2.new(1, 0.5)
 	swatchHolder.Position = UDim2.new(1, -14, 0.5, 0)
 	swatchHolder.Size = UDim2.fromOffset(24, 24)
-	swatchHolder.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(swatchHolder, "BackgroundColor3", "Card")
 	swatchHolder.BackgroundTransparency = 0.9
 	swatchHolder.BorderSizePixel = 0
 	swatchHolder.ZIndex = Z.Content + 1
@@ -8233,7 +8278,7 @@ function Tab:AddColorPicker(opts)
 		draggingSV, draggingHue = false, false
 		colorInput = nil
 		RegisterPopupClose(closePopup)
-		Tween(swatchStroke, { Color = Color3.new(1, 1, 1), Transparency = 0.85 }, 0.15)
+		Tween(swatchStroke, { Color = ThemeValue("Border"), Transparency = 0.85 }, 0.15)
 
 		if followConn then followConn:Disconnect(); followConn = nil end
 		if popupBackdrop then popupBackdrop:Destroy(); popupBackdrop = nil end
@@ -8300,7 +8345,7 @@ function Tab:AddColorPicker(opts)
 		originalHue, originalSat, originalVal = hue, sat, val
 		lastFired = currentColor()
 		RegisterPopupOpen(closePopup)
-		Tween(swatchStroke, { Color = NullUI.Theme.Accent, Transparency = 0.3 }, 0.15)
+		Tween(swatchStroke, { Color = ThemeValue("Accent"), Transparency = 0.3 }, 0.15)
 
 		local root = NullUI._Root
 		local mainWindow = self._window and self._window._gui or root
@@ -8683,7 +8728,7 @@ function Tab:AddKeybind(opts)
 		listening = false
 		KeybindCapturing = false
 		if listenConn then listenConn:Disconnect(); listenConn = nil end
-		Tween(pillStroke, { Color = Color3.new(1, 1, 1), Transparency = 0.88 }, 0.15)
+		Tween(pillStroke, { Color = ThemeValue("Border"), Transparency = 0.88 }, 0.15)
 		Tween(pill, { BackgroundTransparency = 0.9 }, 0.15)
 		keyLabel.Text = currentKey and currentKey.Name or "None"
 	end
@@ -8693,7 +8738,7 @@ function Tab:AddKeybind(opts)
 		listening = true
 		KeybindCapturing = true
 		keyLabel.Text = "..."
-		Tween(pillStroke, { Color = NullUI.Theme.Accent, Transparency = 0.3 }, 0.15)
+		Tween(pillStroke, { Color = ThemeValue("Accent"), Transparency = 0.3 }, 0.15)
 		Tween(pill, { BackgroundTransparency = 0.82 }, 0.15)
 
 		listenConn = UserInputService.InputBegan:Connect(function(input)
@@ -8747,10 +8792,9 @@ function Tab:AddKeybind(opts)
 end
 
 local ConsoleColors = {
-	[Enum.MessageType.MessageInfo]    = Color3.fromRGB(120, 170, 255),
-	[Enum.MessageType.MessageWarning] = Color3.fromRGB(255, 190, 90),
-	[Enum.MessageType.MessageError]   = Color3.fromRGB(255, 105, 105),
-	[Enum.MessageType.MessageOutput]  = nil,
+ [Enum.MessageType.MessageInfo]="Info",
+ [Enum.MessageType.MessageWarning]="Warning",
+ [Enum.MessageType.MessageError]="Danger",
 }
 
 function Tab:AddConsole(opts)
@@ -8837,7 +8881,7 @@ function Tab:AddConsole(opts)
 		local btn = Instance.new("TextButton")
 		btn.Text = ""
 		btn.AutoButtonColor = false
-		btn.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(btn, "BackgroundColor3", "Card")
 		btn.BackgroundTransparency = 1
 		btn.BorderSizePixel = 0
 		btn.Size = UDim2.fromOffset(24, 24)
@@ -8858,11 +8902,11 @@ function Tab:AddConsole(opts)
 
 		jan:Add(btn.MouseEnter:Connect(function()
 			Tween(btn, { BackgroundTransparency = 0.9 }, 0.12)
-			Tween(ic, { ImageColor3 = NullUI.Theme.Text }, 0.12)
+			Tween(ic, { ImageColor3 = ThemeValue("Text") }, 0.12)
 		end))
 		jan:Add(btn.MouseLeave:Connect(function()
 			Tween(btn, { BackgroundTransparency = 1 }, 0.12)
-			Tween(ic, { ImageColor3 = NullUI.Theme.TextDim }, 0.12)
+			Tween(ic, { ImageColor3 = ThemeValue("TextDim") }, 0.12)
 		end))
 
 		return btn, ic
@@ -8872,7 +8916,7 @@ function Tab:AddConsole(opts)
 	local clearBtn = iconButton("trash-2", 2)
 
 	local divider = Instance.new("Frame")
-	divider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(divider, "BackgroundColor3", "Card")
 	divider.BackgroundTransparency = 0.92
 	divider.BorderSizePixel = 0
 	divider.Size = UDim2.new(1, 0, 0, 1)
@@ -8971,7 +9015,8 @@ function Tab:AddConsole(opts)
 		trimLogs()
 
 		counter = counter + 1
-		local color = ConsoleColors[messageType] or NullUI.Theme.Text
+		local colorToken = ConsoleColors[messageType] or "Text"
+		local timestamp = os.date("%H:%M:%S")
 
 		local entry = Instance.new("TextLabel")
 		entry.Name = "Entry"
@@ -8987,11 +9032,9 @@ function Tab:AddConsole(opts)
 		entry.Size = UDim2.new(1, 0, 0, 14)
 		entry.LayoutOrder = counter
 		entry.ZIndex = Z.Content + 2
-		entry.Text = string.format(
-			'<font color="#%s" transparency="0.45">[%s]</font> <font color="#%s">%s</font>',
-			NullUI.Theme.TextDim:ToHex(), os.date("%H:%M:%S"),
-			color:ToHex(), escapeRich(message)
-		)
+		BindTheme(entry, "Text", function(theme) return string.format(
+   '<font color="#%s" transparency="0.45">[%s]</font> <font color="#%s">%s</font>',
+   theme.TextDim:ToHex(), timestamp, theme[colorToken]:ToHex(), escapeRich(message)) end)
 		entry.Parent = logsScroll
 
 		table.insert(logs, entry)
@@ -9029,7 +9072,7 @@ function Tab:AddConsole(opts)
 		Tween(copyIcon, { ImageColor3 = Color3.fromRGB(120, 220, 140) }, 0.1)
 		task.delay(0.4, function()
 			if copyIcon.Parent then
-				Tween(copyIcon, { ImageColor3 = NullUI.Theme.TextDim }, 0.15)
+				Tween(copyIcon, { ImageColor3 = ThemeValue("TextDim") }, 0.15)
 			end
 		end)
 	end)
@@ -9179,16 +9222,16 @@ function Tab:AddTable(opts)
 
 		if sortable then
 			cellBtn.MouseEnter:Connect(function()
-				if sortState.Key ~= col.Key then Tween(lbl, { TextColor3 = NullUI.Theme.Text }, 0.12) end
+				if sortState.Key ~= col.Key then Tween(lbl, { TextColor3 = ThemeValue("Text") }, 0.12) end
 			end)
 			cellBtn.MouseLeave:Connect(function()
-				if sortState.Key ~= col.Key then Tween(lbl, { TextColor3 = NullUI.Theme.TextDim }, 0.12) end
+				if sortState.Key ~= col.Key then Tween(lbl, { TextColor3 = ThemeValue("TextDim") }, 0.12) end
 			end)
 		end
 	end
 
 	local divider = Instance.new("Frame")
-	divider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(divider, "BackgroundColor3", "Card")
 	divider.BackgroundTransparency = 0.92
 	divider.BorderSizePixel = 0
 	divider.Position = UDim2.fromOffset(0, colHeadY + COLHEAD_H)
@@ -9247,7 +9290,7 @@ function Tab:AddTable(opts)
 		for ri, row in ipairs(currentRows) do
 			local rowFrame = Instance.new("Frame")
 			rowFrame.Name = "Row" .. ri
-			rowFrame.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(rowFrame, "BackgroundColor3", "Card")
 			rowFrame.BackgroundTransparency = (striped and ri % 2 == 0) and 0.97 or 1
 			rowFrame.BorderSizePixel = 0
 			rowFrame.LayoutOrder = ri
@@ -9313,7 +9356,7 @@ function Tab:AddTable(opts)
 						local arrow = ""
 						if key == sortState.Key then arrow = sortState.Asc and "  \226\150\178" or "  \226\150\188" end
 						info.Lbl.Text = info.Text .. arrow
-						info.Lbl.TextColor3 = (key == sortState.Key) and NullUI.Theme.Text or NullUI.Theme.TextDim
+						BindTheme(info.Lbl, "TextColor3", function(theme) return (key == sortState.Key) and theme.Text or theme.TextDim end)
 					end
 					applySort()
 				end)
@@ -9378,7 +9421,7 @@ function Tab:AddCardGrid(opts)
 
 	local outer = Instance.new("Frame")
 	outer.Name = "CardGrid"
-	outer.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(outer, "BackgroundColor3", "Card")
 	outer.BackgroundTransparency = 0.97
 	outer.BorderSizePixel = 0
 	outer.Size = UDim2.new(1, 0, 0, height)
@@ -9415,7 +9458,7 @@ function Tab:AddCardGrid(opts)
 	local searchBox
 	if showSearch then
 		local searchPill = Instance.new("Frame")
-		searchPill.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(searchPill, "BackgroundColor3", "Card")
 		searchPill.BackgroundTransparency = 0.92
 		searchPill.BorderSizePixel = 0
 		searchPill.Size = UDim2.new(1, 0, 0, TOP_H)
@@ -9438,7 +9481,7 @@ function Tab:AddCardGrid(opts)
 		searchBox.ClearTextOnFocus = false
 		searchBox.FontFace = NullUI.Theme.FontRegular
 		searchBox.PlaceholderText = opts.SearchPlaceholder or "Search by name / tags..."
-		searchBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 122)
+		BindTheme(searchBox, "PlaceholderColor3", "TextDim")
 		searchBox.Text = ""
 		BindTheme(searchBox, "TextColor3", "Text")
 		searchBox.TextSize = 13
@@ -9452,10 +9495,10 @@ function Tab:AddCardGrid(opts)
 		searchBox.Parent = searchPill
 
 		searchBox.Focused:Connect(function()
-			Tween(searchStroke, { Color = NullUI.Theme.Accent, Transparency = 0.3 }, 0.15)
+			Tween(searchStroke, { Color = ThemeValue("Accent"), Transparency = 0.3 }, 0.15)
 		end)
 		searchBox.FocusLost:Connect(function()
-			Tween(searchStroke, { Color = Color3.new(1, 1, 1), Transparency = 0.88 }, 0.15)
+			Tween(searchStroke, { Color = ThemeValue("Border"), Transparency = 0.88 }, 0.15)
 		end)
 	end
 
@@ -9479,7 +9522,7 @@ function Tab:AddCardGrid(opts)
 			local btn = Instance.new("TextButton")
 			btn.AutoButtonColor = false
 			btn.Text = ""
-			btn.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(btn, "BackgroundColor3", "Card")
 			btn.BackgroundTransparency = (sortName == currentSort) and 0.85 or 1
 			btn.BorderSizePixel = 0
 			btn.AutomaticSize = Enum.AutomaticSize.X
@@ -9498,7 +9541,7 @@ function Tab:AddCardGrid(opts)
 			lbl.BackgroundTransparency = 1
 			lbl.FontFace = NullUI.Theme.Font
 			lbl.Text = string.upper(sortName)
-			lbl.TextColor3 = (sortName == currentSort) and NullUI.Theme.Text or NullUI.Theme.TextDim
+			BindTheme(lbl, "TextColor3", function(theme) return (sortName == currentSort) and theme.Text or theme.TextDim end)
 			lbl.TextSize = 11
 			lbl.AutomaticSize = Enum.AutomaticSize.X
 			lbl.Size = UDim2.fromOffset(0, TABS_H)
@@ -9709,7 +9752,7 @@ function Tab:AddCardGrid(opts)
 			button.Name = "Action" .. i
 			button.Text = ""
 			button.AutoButtonColor = false
-			button.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(button, "BackgroundColor3", "Card")
 			button.BackgroundTransparency = 1
 			button.BorderSizePixel = 0
 			button.Size = UDim2.new(1, 0, 0, rowH)
@@ -9721,7 +9764,7 @@ function Tab:AddCardGrid(opts)
 			local icon = Instance.new("ImageLabel")
 			icon.BackgroundTransparency = 1
 			icon.Image = ResolveIcon(action.Icon or "circle")
-			icon.ImageColor3 = action.Danger and NullUI.Theme.Danger or NullUI.Theme.TextDim
+			BindTheme(icon, "ImageColor3", function(theme) return action.Danger and theme.Danger or theme.TextDim end)
 			icon.Size = UDim2.fromOffset(14, 14)
 			icon.AnchorPoint = Vector2.new(0, 0.5)
 			icon.Position = UDim2.new(0, 9, 0.5, 0)
@@ -9732,7 +9775,7 @@ function Tab:AddCardGrid(opts)
 			label.BackgroundTransparency = 1
 			label.FontFace = NullUI.Theme.FontRegular
 			label.Text = tostring(action.Text or "Action")
-			label.TextColor3 = action.Danger and NullUI.Theme.Danger or NullUI.Theme.Text
+			BindTheme(label, "TextColor3", function(theme) return action.Danger and theme.Danger or theme.Text end)
 			label.TextSize = 12
 			label.TextXAlignment = Enum.TextXAlignment.Left
 			label.Position = UDim2.fromOffset(31, 0)
@@ -9756,7 +9799,7 @@ function Tab:AddCardGrid(opts)
 	local function buildCard(item, animDelay)
 		local cell = Instance.new("Frame")
 		cell.Name = "GridCard"
-		cell.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(cell, "BackgroundColor3", "Card")
 		cell.BackgroundTransparency = 1
 		cell.BorderSizePixel = 0
 		cell.ClipsDescendants = true
@@ -9787,7 +9830,7 @@ function Tab:AddCardGrid(opts)
 		if item.Icon then
 			local ICON_BOX = 24
 			local iconHolder = Instance.new("Frame")
-			iconHolder.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(iconHolder, "BackgroundColor3", "Card")
 			iconHolder.BackgroundTransparency = 0.9
 			iconHolder.BorderSizePixel = 0
 			iconHolder.Size = UDim2.fromOffset(ICON_BOX, ICON_BOX)
@@ -10039,12 +10082,12 @@ function Tab:AddCardGrid(opts)
 
 				if stat.Callback then
 					statFrame.MouseEnter:Connect(function()
-						Tween(statIcon, { ImageColor3 = NullUI.Theme.Accent }, 0.1)
-						Tween(statLbl, { TextColor3 = NullUI.Theme.Accent }, 0.1)
+						Tween(statIcon, { ImageColor3 = ThemeValue("Accent") }, 0.1)
+						Tween(statLbl, { TextColor3 = ThemeValue("Accent") }, 0.1)
 					end)
 					statFrame.MouseLeave:Connect(function()
-						Tween(statIcon, { ImageColor3 = NullUI.Theme.TextDim }, 0.1)
-						Tween(statLbl, { TextColor3 = NullUI.Theme.TextDim }, 0.1)
+						Tween(statIcon, { ImageColor3 = ThemeValue("TextDim") }, 0.1)
+						Tween(statLbl, { TextColor3 = ThemeValue("TextDim") }, 0.1)
 					end)
 					statFrame.MouseButton1Click:Connect(function()
 						SpawnCallback(stat.Callback)
@@ -10193,7 +10236,7 @@ function Tab:AddCardGrid(opts)
 			for otherName, otherEntry in pairs(sortButtons) do
 				local active = otherName == currentSort
 				Tween(otherEntry.Button, { BackgroundTransparency = active and 0.85 or 1 }, 0.12)
-				Tween(otherEntry.Label, { TextColor3 = active and NullUI.Theme.Text or NullUI.Theme.TextDim }, 0.12)
+				Tween(otherEntry.Label, { TextColor3 = active and ThemeValue("Text") or ThemeValue("TextDim") }, 0.12)
 			end
 			refresh()
 		end)
@@ -11026,6 +11069,7 @@ function Window:AddAppearanceTab(options)
 end
 
 local IntegrationContext = {
+ ThemeValue = ThemeValue,
 	BindTheme = BindTheme,
 	ASSETS_FOLDER = ASSETS_FOLDER,
 	AddContentScrollThumb = AddContentScrollThumb,
@@ -11075,7 +11119,6 @@ end
 function NullUI:HasModule(name) return self._Modules[name] == true end
 
 return NullUI
-
 end)()
 UI:Use((function()
 --!nonstrict
@@ -11086,7 +11129,8 @@ return {
 Name = "chat-common", API = 1,
 Requires = {},
 Install = function(context)
- local BindTheme = context.BindTheme
+ local ThemeValue = context.ThemeValue
+local BindTheme = context.BindTheme
 	local AddContentScrollThumb = context.AddContentScrollThumb
 	local AddScrollbar = context.AddScrollbar
 	local Corner = context.Corner
@@ -11105,7 +11149,7 @@ local function CreateChatComposer(content, INPUT_H, BASE_Z, jan, placeholder)
 	inputRow.Parent = content
 
 	local pill = Instance.new("Frame")
-	pill.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(pill, "BackgroundColor3", "Card")
 	pill.BackgroundTransparency = 0.95
 	pill.BorderSizePixel = 0
 	pill.Size = UDim2.new(1, -(INPUT_H + 6), 1, 0)
@@ -11124,7 +11168,7 @@ local function CreateChatComposer(content, INPUT_H, BASE_Z, jan, placeholder)
 	inputBox.ClearTextOnFocus = false
 	inputBox.FontFace = NullUI.Theme.FontRegular
 	inputBox.PlaceholderText = placeholder
-	inputBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 122)
+	BindTheme(inputBox, "PlaceholderColor3", "TextDim")
 	inputBox.Text = ""
 	BindTheme(inputBox, "TextColor3", "Text")
 	inputBox.TextSize = 13
@@ -11136,17 +11180,17 @@ local function CreateChatComposer(content, INPUT_H, BASE_Z, jan, placeholder)
 	inputBox.Parent = pill
 
 	jan:Add(inputBox.Focused:Connect(function()
-		Tween(pillStroke, { Color = NullUI.Theme.Accent, Transparency = 0.3 }, 0.15)
+		Tween(pillStroke, { Color = ThemeValue("Accent"), Transparency = 0.3 }, 0.15)
 	end))
 	jan:Add(inputBox.FocusLost:Connect(function()
-		Tween(pillStroke, { Color = Color3.new(1, 1, 1), Transparency = 0.9 }, 0.15)
+		Tween(pillStroke, { Color = ThemeValue("Border"), Transparency = 0.9 }, 0.15)
 	end))
 
 	local sendBtn = Instance.new("TextButton")
 	sendBtn.Name = "Send"
 	sendBtn.Text = ""
 	sendBtn.AutoButtonColor = false
-	sendBtn.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(sendBtn, "BackgroundColor3", "Card")
 	sendBtn.BackgroundTransparency = 0.9
 	sendBtn.BorderSizePixel = 0
 	sendBtn.AnchorPoint = Vector2.new(1, 0)
@@ -11232,7 +11276,7 @@ local function ChatHeaderButton(controls, BASE_Z, jan, icon, layoutOrder)
 		local btn = Instance.new("TextButton")
 		btn.Text = ""
 		btn.AutoButtonColor = false
-		btn.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(btn, "BackgroundColor3", "Card")
 		btn.BackgroundTransparency = 1
 		btn.BorderSizePixel = 0
 		btn.Size = UDim2.fromOffset(22, 22)
@@ -11253,11 +11297,11 @@ local function ChatHeaderButton(controls, BASE_Z, jan, icon, layoutOrder)
 
 		jan:Add(btn.MouseEnter:Connect(function()
 			Tween(btn, { BackgroundTransparency = 0.9 }, 0.12)
-			Tween(ic, { ImageColor3 = NullUI.Theme.Text }, 0.12)
+			Tween(ic, { ImageColor3 = ThemeValue("Text") }, 0.12)
 		end))
 		jan:Add(btn.MouseLeave:Connect(function()
 			Tween(btn, { BackgroundTransparency = 1 }, 0.12)
-			Tween(ic, { ImageColor3 = NullUI.Theme.TextDim }, 0.12)
+			Tween(ic, { ImageColor3 = ThemeValue("TextDim") }, 0.12)
 		end))
 
 		return btn, ic
@@ -11274,7 +11318,8 @@ return {
 Name = "spotify", API = 1,
 Requires = {},
 Install = function(context)
- local BindTheme = context.BindTheme
+ local ThemeValue = context.ThemeValue
+local BindTheme = context.BindTheme
 	local ASSETS_FOLDER = context.ASSETS_FOLDER
 	local Corner = context.Corner
 	local EnsureAssetsFolder = context.EnsureAssetsFolder
@@ -11394,7 +11439,7 @@ function Window:AddSpotifyPanel(opts)
 	jan:Add(closeBtn.MouseButton1Click:Connect(function() panel.Close() end))
 
 	local divider = Instance.new("Frame")
-	divider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(divider, "BackgroundColor3", "Card")
 	divider.BackgroundTransparency = 0.94
 	divider.BorderSizePixel = 0
 	divider.Position = UDim2.fromOffset(0, HEADER_H)
@@ -11441,7 +11486,7 @@ function Window:AddSpotifyPanel(opts)
 
 	local function makeCard(height, order, parent)
 		local card = Instance.new("Frame")
-		card.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(card, "BackgroundColor3", "Card")
 		card.BackgroundTransparency = 0.96
 		card.BorderSizePixel = 0
 		card.Size = UDim2.new(1, 0, 0, height)
@@ -11490,7 +11535,7 @@ function Window:AddSpotifyPanel(opts)
 	art.BackgroundTransparency = 0.84
 	art.BorderSizePixel = 0
 	art.Image = ""
-	art.ImageColor3 = Color3.new(1, 1, 1)
+	BindTheme(art, "ImageColor3", "Text")
 	art.ScaleType = Enum.ScaleType.Crop
 	art.AnchorPoint = Vector2.new(0, 0)
 	art.Position = UDim2.fromOffset(0, 12)
@@ -11589,7 +11634,7 @@ function Window:AddSpotifyPanel(opts)
 	artistLabel.Parent = nowCard
 
 	local progressTrack = Instance.new("Frame")
-	progressTrack.BackgroundColor3 = Color3.fromRGB(95, 100, 98)
+	BindTheme(progressTrack, "BackgroundColor3", "ToggleOff")
 	progressTrack.BackgroundTransparency = 0.45
 	progressTrack.BorderSizePixel = 0
 	progressTrack.Position = UDim2.fromOffset(100, 76)
@@ -11607,7 +11652,7 @@ function Window:AddSpotifyPanel(opts)
 	Corner(progressFill, 2)
 
 	local progressKnob = Instance.new("Frame")
-	progressKnob.BackgroundColor3 = Color3.fromRGB(235, 239, 237)
+	BindTheme(progressKnob, "BackgroundColor3", "Text")
 	progressKnob.BorderSizePixel = 0
 	progressKnob.AnchorPoint = Vector2.new(0.5, 0.5)
 	progressKnob.Position = UDim2.new(0, 0, 0.5, 0)
@@ -11617,7 +11662,7 @@ function Window:AddSpotifyPanel(opts)
 	Corner(progressKnob, 5)
 
 	local seekBubble = Instance.new("Frame")
-	seekBubble.BackgroundColor3 = Color3.fromRGB(21, 26, 24)
+	BindTheme(seekBubble, "BackgroundColor3", "Surface")
 	seekBubble.BackgroundTransparency = 0.04
 	seekBubble.BorderSizePixel = 0
 	seekBubble.AnchorPoint = Vector2.new(0.5, 1)
@@ -11673,7 +11718,7 @@ function Window:AddSpotifyPanel(opts)
 	durationLabel.Parent = nowCard
 
 	local controlsDivider = Instance.new("Frame")
-	controlsDivider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(controlsDivider, "BackgroundColor3", "Card")
 	controlsDivider.BackgroundTransparency = 0.93
 	controlsDivider.BorderSizePixel = 0
 	controlsDivider.Position = UDim2.fromOffset(0, 111)
@@ -11702,7 +11747,7 @@ function Window:AddSpotifyPanel(opts)
 		button.Name = name
 		button.Text = ""
 		button.AutoButtonColor = false
-		button.BackgroundColor3 = primary and Color3.fromRGB(30, 215, 96) or Color3.new(1, 1, 1)
+		BindTheme(button, "BackgroundColor3", function(theme) return primary and Color3.fromRGB(30,215,96) or theme.Card end)
 		button.BackgroundTransparency = primary and 0.05 or 0.94
 		button.BorderSizePixel = 0
 		button.Size = UDim2.fromOffset(primary and 36 or 32, primary and 36 or 32)
@@ -11714,7 +11759,7 @@ function Window:AddSpotifyPanel(opts)
 		local image = Instance.new("ImageLabel")
 		image.BackgroundTransparency = 1
 		image.Image = ResolveIcon(icon)
-		image.ImageColor3 = primary and Color3.fromRGB(12, 28, 18) or NullUI.Theme.TextDim
+		BindTheme(image, "ImageColor3", function(theme) return primary and Color3.fromRGB(12, 28, 18) or theme.TextDim end)
 		image.AnchorPoint = Vector2.new(0.5, 0.5)
 		image.Position = UDim2.fromScale(0.5, 0.5)
 		image.Size = UDim2.fromOffset(primary and 17 or 15, primary and 17 or 15)
@@ -11745,7 +11790,7 @@ function Window:AddSpotifyPanel(opts)
 		label.Parent = card
 
 		local pill = Instance.new("Frame")
-		pill.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(pill, "BackgroundColor3", "Card")
 		pill.BackgroundTransparency = 0.94
 		pill.BorderSizePixel = 0
 		pill.Position = UDim2.fromOffset(10, 27)
@@ -11757,7 +11802,7 @@ function Window:AddSpotifyPanel(opts)
 		local button = Instance.new("TextButton")
 		button.Text = ""
 		button.AutoButtonColor = false
-		button.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(button, "BackgroundColor3", "Card")
 		button.BackgroundTransparency = 0.91
 		button.BorderSizePixel = 0
 		button.AnchorPoint = Vector2.new(1, 0)
@@ -11881,7 +11926,7 @@ function Window:AddSpotifyPanel(opts)
 	favoritesHint.Parent = favoritesHeader
 	favoritesHint.Visible = false
 	local favoritesSearchPill = Instance.new("Frame")
-	favoritesSearchPill.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(favoritesSearchPill, "BackgroundColor3", "Card")
 	favoritesSearchPill.BackgroundTransparency = 0.94
 	favoritesSearchPill.BorderSizePixel = 0
 	favoritesSearchPill.Position = UDim2.fromOffset(8, 7)
@@ -11915,7 +11960,7 @@ function Window:AddSpotifyPanel(opts)
 	local addFavoriteBtn = Instance.new("TextButton")
 	addFavoriteBtn.Text = ""
 	addFavoriteBtn.AutoButtonColor = false
-	addFavoriteBtn.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(addFavoriteBtn, "BackgroundColor3", "Card")
 	addFavoriteBtn.BackgroundTransparency = 0.96
 	addFavoriteBtn.BorderSizePixel = 0
 	addFavoriteBtn.Position = UDim2.fromOffset(8, 113)
@@ -11965,7 +12010,7 @@ function Window:AddSpotifyPanel(opts)
 	saveFavoriteChevron.ZIndex = Z.Content + 5
 	saveFavoriteChevron.Parent = addFavoriteBtn
 	local saveFavoriteDivider = Instance.new("Frame")
-	saveFavoriteDivider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(saveFavoriteDivider, "BackgroundColor3", "Card")
 	saveFavoriteDivider.BackgroundTransparency = 0.92
 	saveFavoriteDivider.BorderSizePixel = 0
 	saveFavoriteDivider.Position = UDim2.fromOffset(8, 103)
@@ -12104,7 +12149,7 @@ function Window:AddSpotifyPanel(opts)
 			local favorite = entry.Favorite
 			local originalIndex = entry.Index
 			local row = Instance.new("Frame")
-			row.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(row, "BackgroundColor3", "Card")
 			row.BackgroundTransparency = 0.96
 			row.BorderSizePixel = 0
 			row.Position = UDim2.fromOffset(0, (visibleIndex - 1) * 64)
@@ -12114,7 +12159,7 @@ function Window:AddSpotifyPanel(opts)
 			Corner(row, 10)
 			Stroke(row, Color3.new(1, 1, 1), 1, 0.94)
 			local playlistIconBox = Instance.new("Frame")
-			playlistIconBox.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(playlistIconBox, "BackgroundColor3", "Card")
 			playlistIconBox.BackgroundTransparency = 0.91
 			playlistIconBox.BorderSizePixel = 0
 			playlistIconBox.Position = UDim2.fromOffset(10, 9)
@@ -12157,7 +12202,7 @@ function Window:AddSpotifyPanel(opts)
 			local loadFavorite = Instance.new("TextButton")
 			loadFavorite.Text = ""
 			loadFavorite.AutoButtonColor = false
-			loadFavorite.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(loadFavorite, "BackgroundColor3", "Card")
 			loadFavorite.BackgroundTransparency = 0.91
 			loadFavorite.BorderSizePixel = 0
 			loadFavorite.Position = UDim2.new(1, -76, 0, 13)
@@ -12176,7 +12221,7 @@ function Window:AddSpotifyPanel(opts)
 			loadFavoriteIcon.Parent = loadFavorite
 			local removeFavorite = Instance.new("TextButton")
 			removeFavorite.Text = ""
-			removeFavorite.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(removeFavorite, "BackgroundColor3", "Card")
 			removeFavorite.BackgroundTransparency = 0.94
 			removeFavorite.Position = UDim2.new(1, -38, 0, 13)
 			removeFavorite.Size = UDim2.fromOffset(30, 32)
@@ -12234,8 +12279,8 @@ function Window:AddSpotifyPanel(opts)
 
 	local function paintModes()
 		controlRefs.PlayPause.Icon.Image = ResolveIcon(isPlaying and "pause" or "play")
-		controlRefs.Shuffle.Icon.ImageColor3 = shuffle and Color3.fromRGB(30, 215, 96) or NullUI.Theme.TextDim
-		controlRefs.Repeat.Icon.ImageColor3 = repeatMode ~= "off" and Color3.fromRGB(30, 215, 96) or NullUI.Theme.TextDim
+		BindTheme(controlRefs.Shuffle.Icon, "ImageColor3", function(theme) return shuffle and Color3.fromRGB(30, 215, 96) or theme.TextDim end)
+		BindTheme(controlRefs.Repeat.Icon, "ImageColor3", function(theme) return repeatMode ~= "off" and Color3.fromRGB(30, 215, 96) or theme.TextDim end)
 	end
 
 	local function applyState(data)
@@ -12471,7 +12516,8 @@ return {
 Name = "assistant", API = 1,
 Requires = {"chat-common"},
 Install = function(context)
- local BindTheme = context.BindTheme
+ local ThemeValue = context.ThemeValue
+local BindTheme = context.BindTheme
 	local ASSETS_FOLDER = context.ASSETS_FOLDER
 	local Corner = context.Corner
 	local EnsureAssetsFolder = context.EnsureAssetsFolder
@@ -12826,7 +12872,7 @@ function Window:AddChatPanel(opts)
 	local closeBtn = headerIconButton("x", 4)
 
 	local headerDivider = Instance.new("Frame")
-	headerDivider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(headerDivider, "BackgroundColor3", "Card")
 	headerDivider.BackgroundTransparency = 0.94
 	headerDivider.BorderSizePixel = 0
 	headerDivider.Position = UDim2.fromOffset(0, HEADER_H)
@@ -12880,7 +12926,7 @@ function Window:AddChatPanel(opts)
 		local avatarFinalTransparency = isUser and 0.85 or 0.82
 		local avatar = Instance.new("Frame")
 		avatar.Name = "Avatar"
-		avatar.BackgroundColor3 = isUser and Color3.new(1, 1, 1) or NullUI.Theme.Accent
+		BindTheme(avatar, "BackgroundColor3", function(theme) return isUser and theme.Card or theme.Accent end)
 		avatar.BackgroundTransparency = 1
 		avatar.BorderSizePixel = 0
 		avatar.Size = UDim2.fromOffset(AVATAR, AVATAR)
@@ -12948,7 +12994,7 @@ function Window:AddChatPanel(opts)
 		local bubbleFinalTransparency = isUser and 0.72 or 0.9
 		local bubble = Instance.new("Frame")
 		bubble.Name = "Bubble"
-		bubble.BackgroundColor3 = isUser and NullUI.Theme.Accent or Color3.new(1, 1, 1)
+		BindTheme(bubble, "BackgroundColor3", function(theme) return isUser and theme.Accent or theme.Card end)
 		bubble.BackgroundTransparency = 1
 		bubble.BorderSizePixel = 0
 		bubble.AutomaticSize = Enum.AutomaticSize.Y
@@ -13026,7 +13072,7 @@ function Window:AddChatPanel(opts)
 					local btn = Instance.new("TextButton")
 					btn.Text = ""
 					btn.AutoButtonColor = false
-					btn.BackgroundColor3 = Color3.new(1, 1, 1)
+					BindTheme(btn, "BackgroundColor3", "Card")
 					btn.BackgroundTransparency = 1
 					btn.BorderSizePixel = 0
 					btn.AnchorPoint = Vector2.new(1, 0.5)
@@ -13048,11 +13094,11 @@ function Window:AddChatPanel(opts)
 
 					jan:Add(btn.MouseEnter:Connect(function()
 						Tween(btn, { BackgroundTransparency = 0.85 }, 0.12)
-						Tween(ic, { ImageColor3 = NullUI.Theme.Text }, 0.12)
+						Tween(ic, { ImageColor3 = ThemeValue("Text") }, 0.12)
 					end))
 					jan:Add(btn.MouseLeave:Connect(function()
 						Tween(btn, { BackgroundTransparency = 1 }, 0.12)
-						Tween(ic, { ImageColor3 = NullUI.Theme.TextDim }, 0.12)
+						Tween(ic, { ImageColor3 = ThemeValue("TextDim") }, 0.12)
 					end))
 
 					return btn, ic
@@ -13066,7 +13112,7 @@ function Window:AddChatPanel(opts)
 					Tween(copyIcon, { ImageColor3 = Color3.fromRGB(120, 220, 140) }, 0.1)
 					task.delay(0.4, function()
 						if copyIcon.Parent then
-							Tween(copyIcon, { ImageColor3 = NullUI.Theme.TextDim }, 0.15)
+							Tween(copyIcon, { ImageColor3 = ThemeValue("TextDim") }, 0.15)
 						end
 					end)
 				end))
@@ -13096,7 +13142,7 @@ function Window:AddChatPanel(opts)
 				end
 
 				local headerDivider = Instance.new("Frame")
-				headerDivider.BackgroundColor3 = Color3.new(1, 1, 1)
+				BindTheme(headerDivider, "BackgroundColor3", "Card")
 				headerDivider.BackgroundTransparency = 0.92
 				headerDivider.BorderSizePixel = 0
 				headerDivider.Size = UDim2.new(1, 0, 0, 1)
@@ -13274,7 +13320,7 @@ function Window:AddChatPanel(opts)
 		botIcon.Parent = avatar
 
 		local bubble = Instance.new("Frame")
-		bubble.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(bubble, "BackgroundColor3", "Card")
 		bubble.BackgroundTransparency = 1
 		bubble.BorderSizePixel = 0
 		bubble.Size = UDim2.fromOffset(38, AVATAR)
@@ -13465,7 +13511,7 @@ function Window:AddChatPanel(opts)
 		Tween(copyIcon, { ImageColor3 = Color3.fromRGB(120, 220, 140) }, 0.1)
 		task.delay(0.4, function()
 			if copyIcon.Parent then
-				Tween(copyIcon, { ImageColor3 = NullUI.Theme.TextDim }, 0.15)
+				Tween(copyIcon, { ImageColor3 = ThemeValue("TextDim") }, 0.15)
 			end
 		end)
 	end))
@@ -13723,7 +13769,8 @@ return {
 Name = "cloud", API = 1,
 Requires = {"chat-common"},
 Install = function(context)
- local BindTheme = context.BindTheme
+ local ThemeValue = context.ThemeValue
+local BindTheme = context.BindTheme
 	local Corner = context.Corner
 	local EnsureAssetsFolder = context.EnsureAssetsFolder
 	local HttpService = context.HttpService
@@ -14318,7 +14365,7 @@ function Window:AddGlobalChatPanel(opts)
 	local closeBtn, closeIcon = headerIconButton("x", 5)
 
 	local headerDivider = Instance.new("Frame")
-	headerDivider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(headerDivider, "BackgroundColor3", "Card")
 	headerDivider.BackgroundTransparency = 0.94
 	headerDivider.BorderSizePixel = 0
 	headerDivider.Position = UDim2.fromOffset(0, HEADER_H)
@@ -14373,7 +14420,7 @@ function Window:AddGlobalChatPanel(opts)
 		local avatar = Instance.new("Frame")
 		avatar.Name = "Avatar"
 
-		avatar.BackgroundColor3 = isAnon and Color3.fromRGB(196, 143, 105) or NullUI.Theme.Accent
+		BindTheme(avatar, "BackgroundColor3", function(theme) return isAnon and Color3.fromRGB(196, 143, 105) or theme.Accent end)
 		avatar.BackgroundTransparency = 1
 		avatar.BorderSizePixel = 0
 		avatar.Size = UDim2.fromOffset(AVATAR, AVATAR)
@@ -14431,7 +14478,7 @@ function Window:AddGlobalChatPanel(opts)
 
 		local bubble = Instance.new("Frame")
 		bubble.Name = "Bubble"
-		bubble.BackgroundColor3 = isOwn and NullUI.Theme.Accent or Color3.new(1, 1, 1)
+		BindTheme(bubble, "BackgroundColor3", function(theme) return isOwn and theme.Accent or theme.Card end)
 		bubble.BackgroundTransparency = 1
 		bubble.BorderSizePixel = 0
 		bubble.ClipsDescendants = true
@@ -14476,7 +14523,7 @@ function Window:AddGlobalChatPanel(opts)
 			timeLbl.BackgroundTransparency = 1
 			timeLbl.FontFace = NullUI.Theme.FontRegular
 			timeLbl.Text = os.date("%H:%M", math.floor(msg.CreatedAt / 1000))
-			timeLbl.TextColor3 = isOwn and Color3.new(1, 1, 1) or NullUI.Theme.TextDim
+			BindTheme(timeLbl, "TextColor3", function(theme) return isOwn and theme.Text or theme.TextDim end)
 			timeLbl.TextTransparency = isOwn and 0.5 or 0.4
 			timeLbl.TextSize = 10
 			timeLbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -14494,7 +14541,7 @@ function Window:AddGlobalChatPanel(opts)
 			local reportBtn = Instance.new("TextButton")
 			reportBtn.Text = ""
 			reportBtn.AutoButtonColor = false
-			reportBtn.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(reportBtn, "BackgroundColor3", "Card")
 			reportBtn.BackgroundTransparency = 1
 			reportBtn.BorderSizePixel = 0
 			reportBtn.Size = UDim2.fromOffset(20, 20)
@@ -14522,11 +14569,11 @@ function Window:AddGlobalChatPanel(opts)
 			end))
 			jan:Add(reportBtn.MouseEnter:Connect(function()
 				Tween(reportBtn, { BackgroundTransparency = 0.88 }, 0.1)
-				Tween(reportIcon, { ImageColor3 = NullUI.Theme.Danger, ImageTransparency = 0 }, 0.1)
+				Tween(reportIcon, { ImageColor3 = ThemeValue("Danger"), ImageTransparency = 0 }, 0.1)
 			end))
 			jan:Add(reportBtn.MouseLeave:Connect(function()
 				Tween(reportBtn, { BackgroundTransparency = 1 }, 0.1)
-				Tween(reportIcon, { ImageColor3 = NullUI.Theme.TextDim }, 0.1)
+				Tween(reportIcon, { ImageColor3 = ThemeValue("TextDim") }, 0.1)
 			end))
 			jan:Add(reportBtn.MouseButton1Click:Connect(function()
 				NullUI:Confirm({
@@ -14570,7 +14617,7 @@ function Window:AddGlobalChatPanel(opts)
 		Tween(copyIcon, { ImageColor3 = Color3.fromRGB(120, 220, 140) }, 0.1)
 		task.delay(0.4, function()
 			if copyIcon.Parent then
-				Tween(copyIcon, { ImageColor3 = NullUI.Theme.TextDim }, 0.15)
+				Tween(copyIcon, { ImageColor3 = ThemeValue("TextDim") }, 0.15)
 			end
 		end)
 	end))
@@ -14685,7 +14732,7 @@ function Window:AddGlobalChatPanel(opts)
 			local check = Instance.new("TextButton")
 			check.Text = ""
 			check.AutoButtonColor = false
-			check.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(check, "BackgroundColor3", "Card")
 			check.BackgroundTransparency = getValue() and 0.7 or 0.92
 			check.BorderSizePixel = 0
 			check.AnchorPoint = Vector2.new(1, 0.5)
@@ -15032,7 +15079,8 @@ return {
 Name = "feedback", API = 1,
 Requires = {},
 Install = function(context)
- local BindTheme = context.BindTheme
+ local ThemeValue = context.ThemeValue
+local BindTheme = context.BindTheme
 	local DetectFeedbackEvasion = context.DetectFeedbackEvasion
 	local HttpService = context.HttpService
 	local NormalizeFeedbackText = context.NormalizeFeedbackText
@@ -15138,6 +15186,5 @@ end,
 }
 end)()
 }}
-
 end)())
 return UI

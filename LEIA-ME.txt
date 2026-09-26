@@ -1,18 +1,12 @@
-COMO USAR
+VERSAO ATUAL: TEMAS COMPLETOS
 
-1. Substitua core.luau e full.luau no seu repositorio pelos arquivos deste pacote.
-2. O example.luau usa a mesma URL do seu GitHub. A alteracao so aparece por essa URL depois de voce atualizar full.luau no repositorio.
-3. Execute o exemplo e abra a aba Callback Handler. Clique em Test callback error para ver a notificacao vermelha.
+Substitua os arquivos do pacote e mescle as pastas modules e tests com as do repositorio. Veja THEMES.md para detalhes.
 
-O handler protege callbacks dos elementos do core e listeners OnChanged. Um erro exibe Callback Error com a mensagem por 5 segundos e registra os detalhes no console. Nao troca o titulo do elemento por Callback Error.
+Inclui o handler de callbacks e a intro com blur. New Elements continua removido.
 
-Os testes novos passaram para core e full, assim como compilacao e escala. Um teste geral do repositorio ja falha na versao original. Nao houve teste visual no Roblox.
+No exemplo, CONFIG.Theme define Dark, Light, Midnight ou Forest antes de abrir a intro. O tema tambem pode ser trocado durante o uso com VindUI:SetTheme("Midnight").
 
-Teste isolado do pacote: npm install, depois node tests/callbacks.mjs.
-Este pacote contem os arquivos alterados e o teste isolado; os demais testes e arquivos de build ficam no repositorio original.
+Teste: npm install, depois npm run test:ui.
+O antigo teste smoke falha tambem na versao original; os testes especificos de UI passam.
 
-As alteracoes foram preparadas localmente; nao foram publicadas no GitHub.
-
-Atualizacao: removidos a aba New Elements, seus nove componentes exclusivos e CopyConfigJSON da biblioteca e do exemplo. O teste OnChanged agora usa o slider padrao. Atualize tambem README.md.
-
-Intro opcional adicionada. Veja INTRO.md. No exemplo, CONFIG.Intro.Enabled ativa ou desativa. Para testar: node tests/intro.mjs.
+Nao foi publicado no GitHub. O exemplo usa a URL do seu repositorio, portanto publique o full.luau atualizado la para usa-lo por essa URL.

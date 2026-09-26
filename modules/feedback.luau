@@ -3,6 +3,8 @@ return {
 Name = "feedback", API = 1,
 Requires = {},
 Install = function(context)
+ local ThemeValue = context.ThemeValue
+local BindTheme = context.BindTheme
 	local DetectFeedbackEvasion = context.DetectFeedbackEvasion
 	local HttpService = context.HttpService
 	local NormalizeFeedbackText = context.NormalizeFeedbackText

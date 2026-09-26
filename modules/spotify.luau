@@ -3,6 +3,8 @@ return {
 Name = "spotify", API = 1,
 Requires = {},
 Install = function(context)
+ local ThemeValue = context.ThemeValue
+local BindTheme = context.BindTheme
 	local ASSETS_FOLDER = context.ASSETS_FOLDER
 	local Corner = context.Corner
 	local EnsureAssetsFolder = context.EnsureAssetsFolder
@@ -91,7 +93,7 @@ function Window:AddSpotifyPanel(opts)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = opts.Title or "Spotify Player"
-	titleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.AnchorPoint = Vector2.new(0, 0.5)
@@ -113,7 +115,7 @@ function Window:AddSpotifyPanel(opts)
 	local closeIcon = Instance.new("ImageLabel")
 	closeIcon.BackgroundTransparency = 1
 	closeIcon.Image = ResolveIcon("x")
-	closeIcon.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(closeIcon, "ImageColor3", "TextDim")
 	closeIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 	closeIcon.Position = UDim2.fromScale(0.5, 0.5)
 	closeIcon.Size = UDim2.fromOffset(13, 13)
@@ -122,7 +124,7 @@ function Window:AddSpotifyPanel(opts)
 	jan:Add(closeBtn.MouseButton1Click:Connect(function() panel.Close() end))
 
 	local divider = Instance.new("Frame")
-	divider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(divider, "BackgroundColor3", "Card")
 	divider.BackgroundTransparency = 0.94
 	divider.BorderSizePixel = 0
 	divider.Position = UDim2.fromOffset(0, HEADER_H)
@@ -169,7 +171,7 @@ function Window:AddSpotifyPanel(opts)
 
 	local function makeCard(height, order, parent)
 		local card = Instance.new("Frame")
-		card.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(card, "BackgroundColor3", "Card")
 		card.BackgroundTransparency = 0.96
 		card.BorderSizePixel = 0
 		card.Size = UDim2.new(1, 0, 0, height)
@@ -203,7 +205,7 @@ function Window:AddSpotifyPanel(opts)
 	statusLabel.BackgroundTransparency = 1
 	statusLabel.FontFace = NullUI.Theme.FontRegular
 	statusLabel.Text = "Bridge disconnected"
-	statusLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(statusLabel, "TextColor3", "TextDim")
 	statusLabel.TextSize = 12
 	statusLabel.TextXAlignment = Enum.TextXAlignment.Left
 	statusLabel.Position = UDim2.fromOffset(27, 0)
@@ -218,7 +220,7 @@ function Window:AddSpotifyPanel(opts)
 	art.BackgroundTransparency = 0.84
 	art.BorderSizePixel = 0
 	art.Image = ""
-	art.ImageColor3 = Color3.new(1, 1, 1)
+	BindTheme(art, "ImageColor3", "Text")
 	art.ScaleType = Enum.ScaleType.Crop
 	art.AnchorPoint = Vector2.new(0, 0)
 	art.Position = UDim2.fromOffset(0, 12)
@@ -294,7 +296,7 @@ function Window:AddSpotifyPanel(opts)
 	trackLabel.BackgroundTransparency = 1
 	trackLabel.FontFace = NullUI.Theme.Font
 	trackLabel.Text = "Nothing playing"
-	trackLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(trackLabel, "TextColor3", "Text")
 	trackLabel.TextSize = 15
 	trackLabel.TextXAlignment = Enum.TextXAlignment.Left
 	trackLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -307,7 +309,7 @@ function Window:AddSpotifyPanel(opts)
 	artistLabel.BackgroundTransparency = 1
 	artistLabel.FontFace = NullUI.Theme.FontRegular
 	artistLabel.Text = "Connect your Spotify bridge"
-	artistLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(artistLabel, "TextColor3", "TextDim")
 	artistLabel.TextSize = 12
 	artistLabel.TextXAlignment = Enum.TextXAlignment.Left
 	artistLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -317,7 +319,7 @@ function Window:AddSpotifyPanel(opts)
 	artistLabel.Parent = nowCard
 
 	local progressTrack = Instance.new("Frame")
-	progressTrack.BackgroundColor3 = Color3.fromRGB(95, 100, 98)
+	BindTheme(progressTrack, "BackgroundColor3", "ToggleOff")
 	progressTrack.BackgroundTransparency = 0.45
 	progressTrack.BorderSizePixel = 0
 	progressTrack.Position = UDim2.fromOffset(100, 76)
@@ -335,7 +337,7 @@ function Window:AddSpotifyPanel(opts)
 	Corner(progressFill, 2)
 
 	local progressKnob = Instance.new("Frame")
-	progressKnob.BackgroundColor3 = Color3.fromRGB(235, 239, 237)
+	BindTheme(progressKnob, "BackgroundColor3", "Text")
 	progressKnob.BorderSizePixel = 0
 	progressKnob.AnchorPoint = Vector2.new(0.5, 0.5)
 	progressKnob.Position = UDim2.new(0, 0, 0.5, 0)
@@ -345,7 +347,7 @@ function Window:AddSpotifyPanel(opts)
 	Corner(progressKnob, 5)
 
 	local seekBubble = Instance.new("Frame")
-	seekBubble.BackgroundColor3 = Color3.fromRGB(21, 26, 24)
+	BindTheme(seekBubble, "BackgroundColor3", "Surface")
 	seekBubble.BackgroundTransparency = 0.04
 	seekBubble.BorderSizePixel = 0
 	seekBubble.AnchorPoint = Vector2.new(0.5, 1)
@@ -360,7 +362,7 @@ function Window:AddSpotifyPanel(opts)
 	seekBubbleLabel.BackgroundTransparency = 1
 	seekBubbleLabel.FontFace = NullUI.Theme.Font
 	seekBubbleLabel.Text = "0:00"
-	seekBubbleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(seekBubbleLabel, "TextColor3", "Text")
 	seekBubbleLabel.TextSize = 10
 	seekBubbleLabel.Size = UDim2.fromScale(1, 1)
 	seekBubbleLabel.ZIndex = Z.Content + 9
@@ -380,7 +382,7 @@ function Window:AddSpotifyPanel(opts)
 	timeLabel.BackgroundTransparency = 1
 	timeLabel.FontFace = NullUI.Theme.FontRegular
 	timeLabel.Text = "0:00"
-	timeLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(timeLabel, "TextColor3", "TextDim")
 	timeLabel.TextSize = 10
 	timeLabel.TextXAlignment = Enum.TextXAlignment.Left
 	timeLabel.Position = UDim2.fromOffset(100, 87)
@@ -392,7 +394,7 @@ function Window:AddSpotifyPanel(opts)
 	durationLabel.BackgroundTransparency = 1
 	durationLabel.FontFace = NullUI.Theme.FontRegular
 	durationLabel.Text = "0:00"
-	durationLabel.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(durationLabel, "TextColor3", "TextDim")
 	durationLabel.TextSize = 10
 	durationLabel.TextXAlignment = Enum.TextXAlignment.Right
 	durationLabel.Position = UDim2.new(0.5, 50, 0, 87)
@@ -401,7 +403,7 @@ function Window:AddSpotifyPanel(opts)
 	durationLabel.Parent = nowCard
 
 	local controlsDivider = Instance.new("Frame")
-	controlsDivider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(controlsDivider, "BackgroundColor3", "Card")
 	controlsDivider.BackgroundTransparency = 0.93
 	controlsDivider.BorderSizePixel = 0
 	controlsDivider.Position = UDim2.fromOffset(0, 111)
@@ -430,7 +432,7 @@ function Window:AddSpotifyPanel(opts)
 		button.Name = name
 		button.Text = ""
 		button.AutoButtonColor = false
-		button.BackgroundColor3 = primary and Color3.fromRGB(30, 215, 96) or Color3.new(1, 1, 1)
+		BindTheme(button, "BackgroundColor3", function(theme) return primary and Color3.fromRGB(30,215,96) or theme.Card end)
 		button.BackgroundTransparency = primary and 0.05 or 0.94
 		button.BorderSizePixel = 0
 		button.Size = UDim2.fromOffset(primary and 36 or 32, primary and 36 or 32)
@@ -442,7 +444,7 @@ function Window:AddSpotifyPanel(opts)
 		local image = Instance.new("ImageLabel")
 		image.BackgroundTransparency = 1
 		image.Image = ResolveIcon(icon)
-		image.ImageColor3 = primary and Color3.fromRGB(12, 28, 18) or NullUI.Theme.TextDim
+		BindTheme(image, "ImageColor3", function(theme) return primary and Color3.fromRGB(12, 28, 18) or theme.TextDim end)
 		image.AnchorPoint = Vector2.new(0.5, 0.5)
 		image.Position = UDim2.fromScale(0.5, 0.5)
 		image.Size = UDim2.fromOffset(primary and 17 or 15, primary and 17 or 15)
@@ -464,7 +466,7 @@ function Window:AddSpotifyPanel(opts)
 		label.BackgroundTransparency = 1
 		label.FontFace = NullUI.Theme.Font
 		label.Text = title
-		label.TextColor3 = NullUI.Theme.Text
+		BindTheme(label, "TextColor3", "Text")
 		label.TextSize = 12
 		label.TextXAlignment = Enum.TextXAlignment.Left
 		label.Position = UDim2.fromOffset(11, 6)
@@ -473,7 +475,7 @@ function Window:AddSpotifyPanel(opts)
 		label.Parent = card
 
 		local pill = Instance.new("Frame")
-		pill.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(pill, "BackgroundColor3", "Card")
 		pill.BackgroundTransparency = 0.94
 		pill.BorderSizePixel = 0
 		pill.Position = UDim2.fromOffset(10, 27)
@@ -485,7 +487,7 @@ function Window:AddSpotifyPanel(opts)
 		local button = Instance.new("TextButton")
 		button.Text = ""
 		button.AutoButtonColor = false
-		button.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(button, "BackgroundColor3", "Card")
 		button.BackgroundTransparency = 0.91
 		button.BorderSizePixel = 0
 		button.AnchorPoint = Vector2.new(1, 0)
@@ -498,7 +500,7 @@ function Window:AddSpotifyPanel(opts)
 		local buttonImage = Instance.new("ImageLabel")
 		buttonImage.BackgroundTransparency = 1
 		buttonImage.Image = ResolveIcon(buttonIcon)
-		buttonImage.ImageColor3 = NullUI.Theme.Text
+		BindTheme(buttonImage, "ImageColor3", "Text")
 		buttonImage.AnchorPoint = Vector2.new(0.5, 0.5)
 		buttonImage.Position = UDim2.fromScale(0.5, 0.5)
 		buttonImage.Size = UDim2.fromOffset(14, 14)
@@ -511,7 +513,7 @@ function Window:AddSpotifyPanel(opts)
 		box.PlaceholderText = placeholder
 		box.PlaceholderColor3 = Color3.fromRGB(115, 120, 118)
 		box.Text = ""
-		box.TextColor3 = NullUI.Theme.Text
+		BindTheme(box, "TextColor3", "Text")
 		box.TextSize = 11
 		box.TextXAlignment = Enum.TextXAlignment.Left
 		box.BackgroundTransparency = 1
@@ -588,7 +590,7 @@ function Window:AddSpotifyPanel(opts)
 	favoritesTitle.BackgroundTransparency = 1
 	favoritesTitle.FontFace = NullUI.Theme.Font
 	favoritesTitle.Text = "Favorite playlists"
-	favoritesTitle.TextColor3 = NullUI.Theme.Text
+	BindTheme(favoritesTitle, "TextColor3", "Text")
 	favoritesTitle.TextSize = 14
 	favoritesTitle.TextXAlignment = Enum.TextXAlignment.Left
 	favoritesTitle.Position = UDim2.fromOffset(12, 8)
@@ -600,7 +602,7 @@ function Window:AddSpotifyPanel(opts)
 	favoritesHint.BackgroundTransparency = 1
 	favoritesHint.FontFace = NullUI.Theme.FontRegular
 	favoritesHint.Text = "Save and load your playlists with one tap"
-	favoritesHint.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(favoritesHint, "TextColor3", "TextDim")
 	favoritesHint.TextSize = 10
 	favoritesHint.TextXAlignment = Enum.TextXAlignment.Left
 	favoritesHint.Position = UDim2.fromOffset(12, 29)
@@ -609,7 +611,7 @@ function Window:AddSpotifyPanel(opts)
 	favoritesHint.Parent = favoritesHeader
 	favoritesHint.Visible = false
 	local favoritesSearchPill = Instance.new("Frame")
-	favoritesSearchPill.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(favoritesSearchPill, "BackgroundColor3", "Card")
 	favoritesSearchPill.BackgroundTransparency = 0.94
 	favoritesSearchPill.BorderSizePixel = 0
 	favoritesSearchPill.Position = UDim2.fromOffset(8, 7)
@@ -620,7 +622,7 @@ function Window:AddSpotifyPanel(opts)
 	local favoritesSearchIcon = Instance.new("ImageLabel")
 	favoritesSearchIcon.BackgroundTransparency = 1
 	favoritesSearchIcon.Image = ResolveIcon("search")
-	favoritesSearchIcon.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(favoritesSearchIcon, "ImageColor3", "TextDim")
 	favoritesSearchIcon.AnchorPoint = Vector2.new(0, 0.5)
 	favoritesSearchIcon.Position = UDim2.new(0, 11, 0.5, 0)
 	favoritesSearchIcon.Size = UDim2.fromOffset(15, 15)
@@ -633,7 +635,7 @@ function Window:AddSpotifyPanel(opts)
 	favoritesSearchBox.PlaceholderText = "Search favorite playlists..."
 	favoritesSearchBox.PlaceholderColor3 = Color3.fromRGB(115, 120, 118)
 	favoritesSearchBox.Text = ""
-	favoritesSearchBox.TextColor3 = NullUI.Theme.Text
+	BindTheme(favoritesSearchBox, "TextColor3", "Text")
 	favoritesSearchBox.TextSize = 11
 	favoritesSearchBox.TextXAlignment = Enum.TextXAlignment.Left
 	favoritesSearchBox.Position = UDim2.fromOffset(36, 0)
@@ -643,7 +645,7 @@ function Window:AddSpotifyPanel(opts)
 	local addFavoriteBtn = Instance.new("TextButton")
 	addFavoriteBtn.Text = ""
 	addFavoriteBtn.AutoButtonColor = false
-	addFavoriteBtn.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(addFavoriteBtn, "BackgroundColor3", "Card")
 	addFavoriteBtn.BackgroundTransparency = 0.96
 	addFavoriteBtn.BorderSizePixel = 0
 	addFavoriteBtn.Position = UDim2.fromOffset(8, 113)
@@ -655,7 +657,7 @@ function Window:AddSpotifyPanel(opts)
 	local addFavoriteIcon = Instance.new("ImageLabel")
 	addFavoriteIcon.BackgroundTransparency = 1
 	addFavoriteIcon.Image = ResolveIcon("heart-plus")
-	addFavoriteIcon.ImageColor3 = NullUI.Theme.Text
+	BindTheme(addFavoriteIcon, "ImageColor3", "Text")
 	addFavoriteIcon.AnchorPoint = Vector2.new(0, 0.5)
 	addFavoriteIcon.Position = UDim2.new(0, 16, 0.5, 0)
 	addFavoriteIcon.Size = UDim2.fromOffset(17, 17)
@@ -665,7 +667,7 @@ function Window:AddSpotifyPanel(opts)
 	saveFavoriteTitle.BackgroundTransparency = 1
 	saveFavoriteTitle.FontFace = NullUI.Theme.Font
 	saveFavoriteTitle.Text = "Save current playlist"
-	saveFavoriteTitle.TextColor3 = NullUI.Theme.Text
+	BindTheme(saveFavoriteTitle, "TextColor3", "Text")
 	saveFavoriteTitle.TextSize = 12
 	saveFavoriteTitle.TextXAlignment = Enum.TextXAlignment.Left
 	saveFavoriteTitle.Position = UDim2.fromOffset(44, 7)
@@ -676,7 +678,7 @@ function Window:AddSpotifyPanel(opts)
 	saveFavoriteHint.BackgroundTransparency = 1
 	saveFavoriteHint.FontFace = NullUI.Theme.FontRegular
 	saveFavoriteHint.Text = "Add the playlist loaded in the player to Favorites"
-	saveFavoriteHint.TextColor3 = NullUI.Theme.TextDim
+	BindTheme(saveFavoriteHint, "TextColor3", "TextDim")
 	saveFavoriteHint.TextSize = 9
 	saveFavoriteHint.TextXAlignment = Enum.TextXAlignment.Left
 	saveFavoriteHint.Position = UDim2.fromOffset(44, 27)
@@ -686,14 +688,14 @@ function Window:AddSpotifyPanel(opts)
 	local saveFavoriteChevron = Instance.new("ImageLabel")
 	saveFavoriteChevron.BackgroundTransparency = 1
 	saveFavoriteChevron.Image = ResolveIcon("chevron-right")
-	saveFavoriteChevron.ImageColor3 = NullUI.Theme.TextDim
+	BindTheme(saveFavoriteChevron, "ImageColor3", "TextDim")
 	saveFavoriteChevron.AnchorPoint = Vector2.new(1, 0.5)
 	saveFavoriteChevron.Position = UDim2.new(1, -16, 0.5, 0)
 	saveFavoriteChevron.Size = UDim2.fromOffset(14, 14)
 	saveFavoriteChevron.ZIndex = Z.Content + 5
 	saveFavoriteChevron.Parent = addFavoriteBtn
 	local saveFavoriteDivider = Instance.new("Frame")
-	saveFavoriteDivider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(saveFavoriteDivider, "BackgroundColor3", "Card")
 	saveFavoriteDivider.BackgroundTransparency = 0.92
 	saveFavoriteDivider.BorderSizePixel = 0
 	saveFavoriteDivider.Position = UDim2.fromOffset(8, 103)
@@ -820,7 +822,7 @@ function Window:AddSpotifyPanel(opts)
 			empty.BackgroundTransparency = 1
 			empty.FontFace = NullUI.Theme.FontRegular
 			empty.Text = query ~= "" and "No saved playlist matches your search" or "No saved playlists yet"
-			empty.TextColor3 = NullUI.Theme.TextDim
+			BindTheme(empty, "TextColor3", "TextDim")
 			empty.TextSize = 11
 			empty.Size = UDim2.fromScale(1, 1)
 			empty.ZIndex = Z.Content + 3
@@ -832,7 +834,7 @@ function Window:AddSpotifyPanel(opts)
 			local favorite = entry.Favorite
 			local originalIndex = entry.Index
 			local row = Instance.new("Frame")
-			row.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(row, "BackgroundColor3", "Card")
 			row.BackgroundTransparency = 0.96
 			row.BorderSizePixel = 0
 			row.Position = UDim2.fromOffset(0, (visibleIndex - 1) * 64)
@@ -842,7 +844,7 @@ function Window:AddSpotifyPanel(opts)
 			Corner(row, 10)
 			Stroke(row, Color3.new(1, 1, 1), 1, 0.94)
 			local playlistIconBox = Instance.new("Frame")
-			playlistIconBox.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(playlistIconBox, "BackgroundColor3", "Card")
 			playlistIconBox.BackgroundTransparency = 0.91
 			playlistIconBox.BorderSizePixel = 0
 			playlistIconBox.Position = UDim2.fromOffset(10, 9)
@@ -853,7 +855,7 @@ function Window:AddSpotifyPanel(opts)
 			local playlistIcon = Instance.new("ImageLabel")
 			playlistIcon.BackgroundTransparency = 1
 			playlistIcon.Image = ResolveIcon("list-music")
-			playlistIcon.ImageColor3 = NullUI.Theme.Text
+			BindTheme(playlistIcon, "ImageColor3", "Text")
 			playlistIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 			playlistIcon.Position = UDim2.fromScale(0.5, 0.5)
 			playlistIcon.Size = UDim2.fromOffset(15, 15)
@@ -863,7 +865,7 @@ function Window:AddSpotifyPanel(opts)
 			name.BackgroundTransparency = 1
 			name.FontFace = NullUI.Theme.Font
 			name.Text = tostring(favorite.name or "Spotify playlist")
-			name.TextColor3 = NullUI.Theme.Text
+			BindTheme(name, "TextColor3", "Text")
 			name.TextSize = 11
 			name.TextXAlignment = Enum.TextXAlignment.Left
 			name.TextTruncate = Enum.TextTruncate.AtEnd
@@ -875,7 +877,7 @@ function Window:AddSpotifyPanel(opts)
 			subtitle.BackgroundTransparency = 1
 			subtitle.FontFace = NullUI.Theme.FontRegular
 			subtitle.Text = "Spotify playlist"
-			subtitle.TextColor3 = NullUI.Theme.TextDim
+			BindTheme(subtitle, "TextColor3", "TextDim")
 			subtitle.TextSize = 9
 			subtitle.TextXAlignment = Enum.TextXAlignment.Left
 			subtitle.Position = UDim2.fromOffset(60, 30)
@@ -885,7 +887,7 @@ function Window:AddSpotifyPanel(opts)
 			local loadFavorite = Instance.new("TextButton")
 			loadFavorite.Text = ""
 			loadFavorite.AutoButtonColor = false
-			loadFavorite.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(loadFavorite, "BackgroundColor3", "Card")
 			loadFavorite.BackgroundTransparency = 0.91
 			loadFavorite.BorderSizePixel = 0
 			loadFavorite.Position = UDim2.new(1, -76, 0, 13)
@@ -896,7 +898,7 @@ function Window:AddSpotifyPanel(opts)
 			local loadFavoriteIcon = Instance.new("ImageLabel")
 			loadFavoriteIcon.BackgroundTransparency = 1
 			loadFavoriteIcon.Image = ResolveIcon("play")
-			loadFavoriteIcon.ImageColor3 = NullUI.Theme.Text
+			BindTheme(loadFavoriteIcon, "ImageColor3", "Text")
 			loadFavoriteIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 			loadFavoriteIcon.Position = UDim2.fromScale(0.5, 0.5)
 			loadFavoriteIcon.Size = UDim2.fromOffset(13, 13)
@@ -904,7 +906,7 @@ function Window:AddSpotifyPanel(opts)
 			loadFavoriteIcon.Parent = loadFavorite
 			local removeFavorite = Instance.new("TextButton")
 			removeFavorite.Text = ""
-			removeFavorite.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(removeFavorite, "BackgroundColor3", "Card")
 			removeFavorite.BackgroundTransparency = 0.94
 			removeFavorite.Position = UDim2.new(1, -38, 0, 13)
 			removeFavorite.Size = UDim2.fromOffset(30, 32)
@@ -962,8 +964,8 @@ function Window:AddSpotifyPanel(opts)
 
 	local function paintModes()
 		controlRefs.PlayPause.Icon.Image = ResolveIcon(isPlaying and "pause" or "play")
-		controlRefs.Shuffle.Icon.ImageColor3 = shuffle and Color3.fromRGB(30, 215, 96) or NullUI.Theme.TextDim
-		controlRefs.Repeat.Icon.ImageColor3 = repeatMode ~= "off" and Color3.fromRGB(30, 215, 96) or NullUI.Theme.TextDim
+		BindTheme(controlRefs.Shuffle.Icon, "ImageColor3", function(theme) return shuffle and Color3.fromRGB(30, 215, 96) or theme.TextDim end)
+		BindTheme(controlRefs.Repeat.Icon, "ImageColor3", function(theme) return repeatMode ~= "off" and Color3.fromRGB(30, 215, 96) or theme.TextDim end)
 	end
 
 	local function applyState(data)

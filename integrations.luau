@@ -6,7 +6,8 @@ return {
 Name = "chat-common", API = 1,
 Requires = {},
 Install = function(context)
- local BindTheme = context.BindTheme
+ local ThemeValue = context.ThemeValue
+local BindTheme = context.BindTheme
 	local AddContentScrollThumb = context.AddContentScrollThumb
 	local AddScrollbar = context.AddScrollbar
 	local Corner = context.Corner
@@ -25,7 +26,7 @@ local function CreateChatComposer(content, INPUT_H, BASE_Z, jan, placeholder)
 	inputRow.Parent = content
 
 	local pill = Instance.new("Frame")
-	pill.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(pill, "BackgroundColor3", "Card")
 	pill.BackgroundTransparency = 0.95
 	pill.BorderSizePixel = 0
 	pill.Size = UDim2.new(1, -(INPUT_H + 6), 1, 0)
@@ -44,7 +45,7 @@ local function CreateChatComposer(content, INPUT_H, BASE_Z, jan, placeholder)
 	inputBox.ClearTextOnFocus = false
 	inputBox.FontFace = NullUI.Theme.FontRegular
 	inputBox.PlaceholderText = placeholder
-	inputBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 122)
+	BindTheme(inputBox, "PlaceholderColor3", "TextDim")
 	inputBox.Text = ""
 	BindTheme(inputBox, "TextColor3", "Text")
 	inputBox.TextSize = 13
@@ -56,17 +57,17 @@ local function CreateChatComposer(content, INPUT_H, BASE_Z, jan, placeholder)
 	inputBox.Parent = pill
 
 	jan:Add(inputBox.Focused:Connect(function()
-		Tween(pillStroke, { Color = NullUI.Theme.Accent, Transparency = 0.3 }, 0.15)
+		Tween(pillStroke, { Color = ThemeValue("Accent"), Transparency = 0.3 }, 0.15)
 	end))
 	jan:Add(inputBox.FocusLost:Connect(function()
-		Tween(pillStroke, { Color = Color3.new(1, 1, 1), Transparency = 0.9 }, 0.15)
+		Tween(pillStroke, { Color = ThemeValue("Border"), Transparency = 0.9 }, 0.15)
 	end))
 
 	local sendBtn = Instance.new("TextButton")
 	sendBtn.Name = "Send"
 	sendBtn.Text = ""
 	sendBtn.AutoButtonColor = false
-	sendBtn.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(sendBtn, "BackgroundColor3", "Card")
 	sendBtn.BackgroundTransparency = 0.9
 	sendBtn.BorderSizePixel = 0
 	sendBtn.AnchorPoint = Vector2.new(1, 0)
@@ -152,7 +153,7 @@ local function ChatHeaderButton(controls, BASE_Z, jan, icon, layoutOrder)
 		local btn = Instance.new("TextButton")
 		btn.Text = ""
 		btn.AutoButtonColor = false
-		btn.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(btn, "BackgroundColor3", "Card")
 		btn.BackgroundTransparency = 1
 		btn.BorderSizePixel = 0
 		btn.Size = UDim2.fromOffset(22, 22)
@@ -173,11 +174,11 @@ local function ChatHeaderButton(controls, BASE_Z, jan, icon, layoutOrder)
 
 		jan:Add(btn.MouseEnter:Connect(function()
 			Tween(btn, { BackgroundTransparency = 0.9 }, 0.12)
-			Tween(ic, { ImageColor3 = NullUI.Theme.Text }, 0.12)
+			Tween(ic, { ImageColor3 = ThemeValue("Text") }, 0.12)
 		end))
 		jan:Add(btn.MouseLeave:Connect(function()
 			Tween(btn, { BackgroundTransparency = 1 }, 0.12)
-			Tween(ic, { ImageColor3 = NullUI.Theme.TextDim }, 0.12)
+			Tween(ic, { ImageColor3 = ThemeValue("TextDim") }, 0.12)
 		end))
 
 		return btn, ic
@@ -194,7 +195,8 @@ return {
 Name = "spotify", API = 1,
 Requires = {},
 Install = function(context)
- local BindTheme = context.BindTheme
+ local ThemeValue = context.ThemeValue
+local BindTheme = context.BindTheme
 	local ASSETS_FOLDER = context.ASSETS_FOLDER
 	local Corner = context.Corner
 	local EnsureAssetsFolder = context.EnsureAssetsFolder
@@ -314,7 +316,7 @@ function Window:AddSpotifyPanel(opts)
 	jan:Add(closeBtn.MouseButton1Click:Connect(function() panel.Close() end))
 
 	local divider = Instance.new("Frame")
-	divider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(divider, "BackgroundColor3", "Card")
 	divider.BackgroundTransparency = 0.94
 	divider.BorderSizePixel = 0
 	divider.Position = UDim2.fromOffset(0, HEADER_H)
@@ -361,7 +363,7 @@ function Window:AddSpotifyPanel(opts)
 
 	local function makeCard(height, order, parent)
 		local card = Instance.new("Frame")
-		card.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(card, "BackgroundColor3", "Card")
 		card.BackgroundTransparency = 0.96
 		card.BorderSizePixel = 0
 		card.Size = UDim2.new(1, 0, 0, height)
@@ -410,7 +412,7 @@ function Window:AddSpotifyPanel(opts)
 	art.BackgroundTransparency = 0.84
 	art.BorderSizePixel = 0
 	art.Image = ""
-	art.ImageColor3 = Color3.new(1, 1, 1)
+	BindTheme(art, "ImageColor3", "Text")
 	art.ScaleType = Enum.ScaleType.Crop
 	art.AnchorPoint = Vector2.new(0, 0)
 	art.Position = UDim2.fromOffset(0, 12)
@@ -509,7 +511,7 @@ function Window:AddSpotifyPanel(opts)
 	artistLabel.Parent = nowCard
 
 	local progressTrack = Instance.new("Frame")
-	progressTrack.BackgroundColor3 = Color3.fromRGB(95, 100, 98)
+	BindTheme(progressTrack, "BackgroundColor3", "ToggleOff")
 	progressTrack.BackgroundTransparency = 0.45
 	progressTrack.BorderSizePixel = 0
 	progressTrack.Position = UDim2.fromOffset(100, 76)
@@ -527,7 +529,7 @@ function Window:AddSpotifyPanel(opts)
 	Corner(progressFill, 2)
 
 	local progressKnob = Instance.new("Frame")
-	progressKnob.BackgroundColor3 = Color3.fromRGB(235, 239, 237)
+	BindTheme(progressKnob, "BackgroundColor3", "Text")
 	progressKnob.BorderSizePixel = 0
 	progressKnob.AnchorPoint = Vector2.new(0.5, 0.5)
 	progressKnob.Position = UDim2.new(0, 0, 0.5, 0)
@@ -537,7 +539,7 @@ function Window:AddSpotifyPanel(opts)
 	Corner(progressKnob, 5)
 
 	local seekBubble = Instance.new("Frame")
-	seekBubble.BackgroundColor3 = Color3.fromRGB(21, 26, 24)
+	BindTheme(seekBubble, "BackgroundColor3", "Surface")
 	seekBubble.BackgroundTransparency = 0.04
 	seekBubble.BorderSizePixel = 0
 	seekBubble.AnchorPoint = Vector2.new(0.5, 1)
@@ -593,7 +595,7 @@ function Window:AddSpotifyPanel(opts)
 	durationLabel.Parent = nowCard
 
 	local controlsDivider = Instance.new("Frame")
-	controlsDivider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(controlsDivider, "BackgroundColor3", "Card")
 	controlsDivider.BackgroundTransparency = 0.93
 	controlsDivider.BorderSizePixel = 0
 	controlsDivider.Position = UDim2.fromOffset(0, 111)
@@ -622,7 +624,7 @@ function Window:AddSpotifyPanel(opts)
 		button.Name = name
 		button.Text = ""
 		button.AutoButtonColor = false
-		button.BackgroundColor3 = primary and Color3.fromRGB(30, 215, 96) or Color3.new(1, 1, 1)
+		BindTheme(button, "BackgroundColor3", function(theme) return primary and Color3.fromRGB(30,215,96) or theme.Card end)
 		button.BackgroundTransparency = primary and 0.05 or 0.94
 		button.BorderSizePixel = 0
 		button.Size = UDim2.fromOffset(primary and 36 or 32, primary and 36 or 32)
@@ -634,7 +636,7 @@ function Window:AddSpotifyPanel(opts)
 		local image = Instance.new("ImageLabel")
 		image.BackgroundTransparency = 1
 		image.Image = ResolveIcon(icon)
-		image.ImageColor3 = primary and Color3.fromRGB(12, 28, 18) or NullUI.Theme.TextDim
+		BindTheme(image, "ImageColor3", function(theme) return primary and Color3.fromRGB(12, 28, 18) or theme.TextDim end)
 		image.AnchorPoint = Vector2.new(0.5, 0.5)
 		image.Position = UDim2.fromScale(0.5, 0.5)
 		image.Size = UDim2.fromOffset(primary and 17 or 15, primary and 17 or 15)
@@ -665,7 +667,7 @@ function Window:AddSpotifyPanel(opts)
 		label.Parent = card
 
 		local pill = Instance.new("Frame")
-		pill.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(pill, "BackgroundColor3", "Card")
 		pill.BackgroundTransparency = 0.94
 		pill.BorderSizePixel = 0
 		pill.Position = UDim2.fromOffset(10, 27)
@@ -677,7 +679,7 @@ function Window:AddSpotifyPanel(opts)
 		local button = Instance.new("TextButton")
 		button.Text = ""
 		button.AutoButtonColor = false
-		button.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(button, "BackgroundColor3", "Card")
 		button.BackgroundTransparency = 0.91
 		button.BorderSizePixel = 0
 		button.AnchorPoint = Vector2.new(1, 0)
@@ -801,7 +803,7 @@ function Window:AddSpotifyPanel(opts)
 	favoritesHint.Parent = favoritesHeader
 	favoritesHint.Visible = false
 	local favoritesSearchPill = Instance.new("Frame")
-	favoritesSearchPill.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(favoritesSearchPill, "BackgroundColor3", "Card")
 	favoritesSearchPill.BackgroundTransparency = 0.94
 	favoritesSearchPill.BorderSizePixel = 0
 	favoritesSearchPill.Position = UDim2.fromOffset(8, 7)
@@ -835,7 +837,7 @@ function Window:AddSpotifyPanel(opts)
 	local addFavoriteBtn = Instance.new("TextButton")
 	addFavoriteBtn.Text = ""
 	addFavoriteBtn.AutoButtonColor = false
-	addFavoriteBtn.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(addFavoriteBtn, "BackgroundColor3", "Card")
 	addFavoriteBtn.BackgroundTransparency = 0.96
 	addFavoriteBtn.BorderSizePixel = 0
 	addFavoriteBtn.Position = UDim2.fromOffset(8, 113)
@@ -885,7 +887,7 @@ function Window:AddSpotifyPanel(opts)
 	saveFavoriteChevron.ZIndex = Z.Content + 5
 	saveFavoriteChevron.Parent = addFavoriteBtn
 	local saveFavoriteDivider = Instance.new("Frame")
-	saveFavoriteDivider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(saveFavoriteDivider, "BackgroundColor3", "Card")
 	saveFavoriteDivider.BackgroundTransparency = 0.92
 	saveFavoriteDivider.BorderSizePixel = 0
 	saveFavoriteDivider.Position = UDim2.fromOffset(8, 103)
@@ -1024,7 +1026,7 @@ function Window:AddSpotifyPanel(opts)
 			local favorite = entry.Favorite
 			local originalIndex = entry.Index
 			local row = Instance.new("Frame")
-			row.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(row, "BackgroundColor3", "Card")
 			row.BackgroundTransparency = 0.96
 			row.BorderSizePixel = 0
 			row.Position = UDim2.fromOffset(0, (visibleIndex - 1) * 64)
@@ -1034,7 +1036,7 @@ function Window:AddSpotifyPanel(opts)
 			Corner(row, 10)
 			Stroke(row, Color3.new(1, 1, 1), 1, 0.94)
 			local playlistIconBox = Instance.new("Frame")
-			playlistIconBox.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(playlistIconBox, "BackgroundColor3", "Card")
 			playlistIconBox.BackgroundTransparency = 0.91
 			playlistIconBox.BorderSizePixel = 0
 			playlistIconBox.Position = UDim2.fromOffset(10, 9)
@@ -1077,7 +1079,7 @@ function Window:AddSpotifyPanel(opts)
 			local loadFavorite = Instance.new("TextButton")
 			loadFavorite.Text = ""
 			loadFavorite.AutoButtonColor = false
-			loadFavorite.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(loadFavorite, "BackgroundColor3", "Card")
 			loadFavorite.BackgroundTransparency = 0.91
 			loadFavorite.BorderSizePixel = 0
 			loadFavorite.Position = UDim2.new(1, -76, 0, 13)
@@ -1096,7 +1098,7 @@ function Window:AddSpotifyPanel(opts)
 			loadFavoriteIcon.Parent = loadFavorite
 			local removeFavorite = Instance.new("TextButton")
 			removeFavorite.Text = ""
-			removeFavorite.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(removeFavorite, "BackgroundColor3", "Card")
 			removeFavorite.BackgroundTransparency = 0.94
 			removeFavorite.Position = UDim2.new(1, -38, 0, 13)
 			removeFavorite.Size = UDim2.fromOffset(30, 32)
@@ -1154,8 +1156,8 @@ function Window:AddSpotifyPanel(opts)
 
 	local function paintModes()
 		controlRefs.PlayPause.Icon.Image = ResolveIcon(isPlaying and "pause" or "play")
-		controlRefs.Shuffle.Icon.ImageColor3 = shuffle and Color3.fromRGB(30, 215, 96) or NullUI.Theme.TextDim
-		controlRefs.Repeat.Icon.ImageColor3 = repeatMode ~= "off" and Color3.fromRGB(30, 215, 96) or NullUI.Theme.TextDim
+		BindTheme(controlRefs.Shuffle.Icon, "ImageColor3", function(theme) return shuffle and Color3.fromRGB(30, 215, 96) or theme.TextDim end)
+		BindTheme(controlRefs.Repeat.Icon, "ImageColor3", function(theme) return repeatMode ~= "off" and Color3.fromRGB(30, 215, 96) or theme.TextDim end)
 	end
 
 	local function applyState(data)
@@ -1391,7 +1393,8 @@ return {
 Name = "assistant", API = 1,
 Requires = {"chat-common"},
 Install = function(context)
- local BindTheme = context.BindTheme
+ local ThemeValue = context.ThemeValue
+local BindTheme = context.BindTheme
 	local ASSETS_FOLDER = context.ASSETS_FOLDER
 	local Corner = context.Corner
 	local EnsureAssetsFolder = context.EnsureAssetsFolder
@@ -1746,7 +1749,7 @@ function Window:AddChatPanel(opts)
 	local closeBtn = headerIconButton("x", 4)
 
 	local headerDivider = Instance.new("Frame")
-	headerDivider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(headerDivider, "BackgroundColor3", "Card")
 	headerDivider.BackgroundTransparency = 0.94
 	headerDivider.BorderSizePixel = 0
 	headerDivider.Position = UDim2.fromOffset(0, HEADER_H)
@@ -1800,7 +1803,7 @@ function Window:AddChatPanel(opts)
 		local avatarFinalTransparency = isUser and 0.85 or 0.82
 		local avatar = Instance.new("Frame")
 		avatar.Name = "Avatar"
-		avatar.BackgroundColor3 = isUser and Color3.new(1, 1, 1) or NullUI.Theme.Accent
+		BindTheme(avatar, "BackgroundColor3", function(theme) return isUser and theme.Card or theme.Accent end)
 		avatar.BackgroundTransparency = 1
 		avatar.BorderSizePixel = 0
 		avatar.Size = UDim2.fromOffset(AVATAR, AVATAR)
@@ -1868,7 +1871,7 @@ function Window:AddChatPanel(opts)
 		local bubbleFinalTransparency = isUser and 0.72 or 0.9
 		local bubble = Instance.new("Frame")
 		bubble.Name = "Bubble"
-		bubble.BackgroundColor3 = isUser and NullUI.Theme.Accent or Color3.new(1, 1, 1)
+		BindTheme(bubble, "BackgroundColor3", function(theme) return isUser and theme.Accent or theme.Card end)
 		bubble.BackgroundTransparency = 1
 		bubble.BorderSizePixel = 0
 		bubble.AutomaticSize = Enum.AutomaticSize.Y
@@ -1946,7 +1949,7 @@ function Window:AddChatPanel(opts)
 					local btn = Instance.new("TextButton")
 					btn.Text = ""
 					btn.AutoButtonColor = false
-					btn.BackgroundColor3 = Color3.new(1, 1, 1)
+					BindTheme(btn, "BackgroundColor3", "Card")
 					btn.BackgroundTransparency = 1
 					btn.BorderSizePixel = 0
 					btn.AnchorPoint = Vector2.new(1, 0.5)
@@ -1968,11 +1971,11 @@ function Window:AddChatPanel(opts)
 
 					jan:Add(btn.MouseEnter:Connect(function()
 						Tween(btn, { BackgroundTransparency = 0.85 }, 0.12)
-						Tween(ic, { ImageColor3 = NullUI.Theme.Text }, 0.12)
+						Tween(ic, { ImageColor3 = ThemeValue("Text") }, 0.12)
 					end))
 					jan:Add(btn.MouseLeave:Connect(function()
 						Tween(btn, { BackgroundTransparency = 1 }, 0.12)
-						Tween(ic, { ImageColor3 = NullUI.Theme.TextDim }, 0.12)
+						Tween(ic, { ImageColor3 = ThemeValue("TextDim") }, 0.12)
 					end))
 
 					return btn, ic
@@ -1986,7 +1989,7 @@ function Window:AddChatPanel(opts)
 					Tween(copyIcon, { ImageColor3 = Color3.fromRGB(120, 220, 140) }, 0.1)
 					task.delay(0.4, function()
 						if copyIcon.Parent then
-							Tween(copyIcon, { ImageColor3 = NullUI.Theme.TextDim }, 0.15)
+							Tween(copyIcon, { ImageColor3 = ThemeValue("TextDim") }, 0.15)
 						end
 					end)
 				end))
@@ -2016,7 +2019,7 @@ function Window:AddChatPanel(opts)
 				end
 
 				local headerDivider = Instance.new("Frame")
-				headerDivider.BackgroundColor3 = Color3.new(1, 1, 1)
+				BindTheme(headerDivider, "BackgroundColor3", "Card")
 				headerDivider.BackgroundTransparency = 0.92
 				headerDivider.BorderSizePixel = 0
 				headerDivider.Size = UDim2.new(1, 0, 0, 1)
@@ -2194,7 +2197,7 @@ function Window:AddChatPanel(opts)
 		botIcon.Parent = avatar
 
 		local bubble = Instance.new("Frame")
-		bubble.BackgroundColor3 = Color3.new(1, 1, 1)
+		BindTheme(bubble, "BackgroundColor3", "Card")
 		bubble.BackgroundTransparency = 1
 		bubble.BorderSizePixel = 0
 		bubble.Size = UDim2.fromOffset(38, AVATAR)
@@ -2385,7 +2388,7 @@ function Window:AddChatPanel(opts)
 		Tween(copyIcon, { ImageColor3 = Color3.fromRGB(120, 220, 140) }, 0.1)
 		task.delay(0.4, function()
 			if copyIcon.Parent then
-				Tween(copyIcon, { ImageColor3 = NullUI.Theme.TextDim }, 0.15)
+				Tween(copyIcon, { ImageColor3 = ThemeValue("TextDim") }, 0.15)
 			end
 		end)
 	end))
@@ -2643,7 +2646,8 @@ return {
 Name = "cloud", API = 1,
 Requires = {"chat-common"},
 Install = function(context)
- local BindTheme = context.BindTheme
+ local ThemeValue = context.ThemeValue
+local BindTheme = context.BindTheme
 	local Corner = context.Corner
 	local EnsureAssetsFolder = context.EnsureAssetsFolder
 	local HttpService = context.HttpService
@@ -3238,7 +3242,7 @@ function Window:AddGlobalChatPanel(opts)
 	local closeBtn, closeIcon = headerIconButton("x", 5)
 
 	local headerDivider = Instance.new("Frame")
-	headerDivider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(headerDivider, "BackgroundColor3", "Card")
 	headerDivider.BackgroundTransparency = 0.94
 	headerDivider.BorderSizePixel = 0
 	headerDivider.Position = UDim2.fromOffset(0, HEADER_H)
@@ -3293,7 +3297,7 @@ function Window:AddGlobalChatPanel(opts)
 		local avatar = Instance.new("Frame")
 		avatar.Name = "Avatar"
 
-		avatar.BackgroundColor3 = isAnon and Color3.fromRGB(196, 143, 105) or NullUI.Theme.Accent
+		BindTheme(avatar, "BackgroundColor3", function(theme) return isAnon and Color3.fromRGB(196, 143, 105) or theme.Accent end)
 		avatar.BackgroundTransparency = 1
 		avatar.BorderSizePixel = 0
 		avatar.Size = UDim2.fromOffset(AVATAR, AVATAR)
@@ -3351,7 +3355,7 @@ function Window:AddGlobalChatPanel(opts)
 
 		local bubble = Instance.new("Frame")
 		bubble.Name = "Bubble"
-		bubble.BackgroundColor3 = isOwn and NullUI.Theme.Accent or Color3.new(1, 1, 1)
+		BindTheme(bubble, "BackgroundColor3", function(theme) return isOwn and theme.Accent or theme.Card end)
 		bubble.BackgroundTransparency = 1
 		bubble.BorderSizePixel = 0
 		bubble.ClipsDescendants = true
@@ -3396,7 +3400,7 @@ function Window:AddGlobalChatPanel(opts)
 			timeLbl.BackgroundTransparency = 1
 			timeLbl.FontFace = NullUI.Theme.FontRegular
 			timeLbl.Text = os.date("%H:%M", math.floor(msg.CreatedAt / 1000))
-			timeLbl.TextColor3 = isOwn and Color3.new(1, 1, 1) or NullUI.Theme.TextDim
+			BindTheme(timeLbl, "TextColor3", function(theme) return isOwn and theme.Text or theme.TextDim end)
 			timeLbl.TextTransparency = isOwn and 0.5 or 0.4
 			timeLbl.TextSize = 10
 			timeLbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -3414,7 +3418,7 @@ function Window:AddGlobalChatPanel(opts)
 			local reportBtn = Instance.new("TextButton")
 			reportBtn.Text = ""
 			reportBtn.AutoButtonColor = false
-			reportBtn.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(reportBtn, "BackgroundColor3", "Card")
 			reportBtn.BackgroundTransparency = 1
 			reportBtn.BorderSizePixel = 0
 			reportBtn.Size = UDim2.fromOffset(20, 20)
@@ -3442,11 +3446,11 @@ function Window:AddGlobalChatPanel(opts)
 			end))
 			jan:Add(reportBtn.MouseEnter:Connect(function()
 				Tween(reportBtn, { BackgroundTransparency = 0.88 }, 0.1)
-				Tween(reportIcon, { ImageColor3 = NullUI.Theme.Danger, ImageTransparency = 0 }, 0.1)
+				Tween(reportIcon, { ImageColor3 = ThemeValue("Danger"), ImageTransparency = 0 }, 0.1)
 			end))
 			jan:Add(reportBtn.MouseLeave:Connect(function()
 				Tween(reportBtn, { BackgroundTransparency = 1 }, 0.1)
-				Tween(reportIcon, { ImageColor3 = NullUI.Theme.TextDim }, 0.1)
+				Tween(reportIcon, { ImageColor3 = ThemeValue("TextDim") }, 0.1)
 			end))
 			jan:Add(reportBtn.MouseButton1Click:Connect(function()
 				NullUI:Confirm({
@@ -3490,7 +3494,7 @@ function Window:AddGlobalChatPanel(opts)
 		Tween(copyIcon, { ImageColor3 = Color3.fromRGB(120, 220, 140) }, 0.1)
 		task.delay(0.4, function()
 			if copyIcon.Parent then
-				Tween(copyIcon, { ImageColor3 = NullUI.Theme.TextDim }, 0.15)
+				Tween(copyIcon, { ImageColor3 = ThemeValue("TextDim") }, 0.15)
 			end
 		end)
 	end))
@@ -3605,7 +3609,7 @@ function Window:AddGlobalChatPanel(opts)
 			local check = Instance.new("TextButton")
 			check.Text = ""
 			check.AutoButtonColor = false
-			check.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(check, "BackgroundColor3", "Card")
 			check.BackgroundTransparency = getValue() and 0.7 or 0.92
 			check.BorderSizePixel = 0
 			check.AnchorPoint = Vector2.new(1, 0.5)
@@ -3952,7 +3956,8 @@ return {
 Name = "feedback", API = 1,
 Requires = {},
 Install = function(context)
- local BindTheme = context.BindTheme
+ local ThemeValue = context.ThemeValue
+local BindTheme = context.BindTheme
 	local DetectFeedbackEvasion = context.DetectFeedbackEvasion
 	local HttpService = context.HttpService
 	local NormalizeFeedbackText = context.NormalizeFeedbackText

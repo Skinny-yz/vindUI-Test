@@ -3,6 +3,7 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 getgenv().CONFIG = {
+    Theme = "Dark", -- Dark, Light, Midnight, Forest
     -- Optional startup intro. Set Enabled = false to skip it completely.
     Intro = {
         Enabled = true,
@@ -40,6 +41,7 @@ getgenv().CONFIG = {
 }
 
 local VindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Skinny-yz/vindUI-Test/main/full.luau"))()
+VindUI:SetTheme(getgenv().CONFIG.Theme)
 VindUI:PreloadIcons({ "Lucide", "Material", "Phosphor", "SF" })
 VindUI:SetScaleRange(0.75, 1.35) -- Desktop
 VindUI:SetMobileScaleReference(getgenv().CONFIG.MobileScaleReference)

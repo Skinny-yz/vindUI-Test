@@ -7,3 +7,5 @@ Element callbacks and OnChanged listeners report failures as Callback Error noti
 The New Elements tab and its nine dedicated components have been removed from the example and library, together with CopyConfigJSON. Existing standard controls and button groups remain available.
 
 Optional customizable startup intro: see INTRO.md. Call VindUI:ShowIntro(options):Wait() before creating the window, or leave it out entirely.
+
+Complete live themes: see THEMES.md. Run npm run test:ui for the checked UI regressions. Module sources and generated bundles are synchronized.

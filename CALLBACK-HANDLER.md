@@ -10,4 +10,4 @@ Covers buttons, button groups, cards, toggles, sliders, dropdowns, textboxes, co
 
 Validation: all Luau files compile; callback regressions pass for core and full; scale tests pass. The pre-existing smoke test fails on both the original and modified core. Live Roblox rendering was not tested. Run callback checks with node tests/callbacks.mjs after npm install.
 
-The original integrations bundle is preserved. Existing module source files differ from their checked-in bundle; rebuilding all bundles with build.mjs would also introduce unrelated integration changes.
+The module sources and integration bundles are synchronized in the full-theme update.

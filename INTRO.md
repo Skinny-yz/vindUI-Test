@@ -89,7 +89,7 @@ Substitua core.luau, full.luau e example.luau. Mescle tests com os testes existe
 
 Compilacao Luau, testes de intro (core e full), callbacks e escala passaram. O teste geral smoke continua tendo uma falha preexistente na versao original. A aparencia ainda nao foi validada dentro do Roblox real.
 
-O bundle de integracoes original foi preservado: os fontes dos modulos ja divergiam do bundle no repositorio. Evite regerar integracoes como parte desta alteracao sem revisar essas diferencas.
+Os modulos e os bundles de integracoes estao sincronizados nesta versao.
 
 Visual revisado: cartao compacto com logo a esquerda, tipografia e cores herdadas do tema, barra fina e fundo discretamente escurecido. O degradê fica exclusivamente na camada decorativa, sem tingir textos e logo.
 

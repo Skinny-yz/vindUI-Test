@@ -3,6 +3,8 @@ return {
 Name = "cloud", API = 1,
 Requires = {"chat-common"},
 Install = function(context)
+ local ThemeValue = context.ThemeValue
+local BindTheme = context.BindTheme
 	local Corner = context.Corner
 	local EnsureAssetsFolder = context.EnsureAssetsFolder
 	local HttpService = context.HttpService
@@ -547,7 +549,7 @@ function Window:AddGlobalChatPanel(opts)
 	local titleIcon = Instance.new("ImageLabel")
 	titleIcon.BackgroundTransparency = 1
 	titleIcon.Image = ResolveIcon(opts.Icon or "messages-square")
-	titleIcon.ImageColor3 = NullUI.Theme.Text
+	BindTheme(titleIcon, "ImageColor3", "Text")
 	titleIcon.Size = UDim2.fromOffset(14, 14)
 	titleIcon.LayoutOrder = 1
 	titleIcon.ZIndex = BASE_Z + 2
@@ -557,7 +559,7 @@ function Window:AddGlobalChatPanel(opts)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.FontFace = NullUI.Theme.Font
 	titleLabel.Text = opts.Title or "Chat"
-	titleLabel.TextColor3 = NullUI.Theme.Text
+	BindTheme(titleLabel, "TextColor3", "Text")
 	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.AutomaticSize = Enum.AutomaticSize.X
@@ -597,7 +599,7 @@ function Window:AddGlobalChatPanel(opts)
 	local closeBtn, closeIcon = headerIconButton("x", 5)
 
 	local headerDivider = Instance.new("Frame")
-	headerDivider.BackgroundColor3 = Color3.new(1, 1, 1)
+	BindTheme(headerDivider, "BackgroundColor3", "Card")
 	headerDivider.BackgroundTransparency = 0.94
 	headerDivider.BorderSizePixel = 0
 	headerDivider.Position = UDim2.fromOffset(0, HEADER_H)
@@ -652,7 +654,7 @@ function Window:AddGlobalChatPanel(opts)
 		local avatar = Instance.new("Frame")
 		avatar.Name = "Avatar"
 
-		avatar.BackgroundColor3 = isAnon and Color3.fromRGB(196, 143, 105) or NullUI.Theme.Accent
+		BindTheme(avatar, "BackgroundColor3", function(theme) return isAnon and Color3.fromRGB(196, 143, 105) or theme.Accent end)
 		avatar.BackgroundTransparency = 1
 		avatar.BorderSizePixel = 0
 		avatar.Size = UDim2.fromOffset(AVATAR, AVATAR)
@@ -710,7 +712,7 @@ function Window:AddGlobalChatPanel(opts)
 
 		local bubble = Instance.new("Frame")
 		bubble.Name = "Bubble"
-		bubble.BackgroundColor3 = isOwn and NullUI.Theme.Accent or Color3.new(1, 1, 1)
+		BindTheme(bubble, "BackgroundColor3", function(theme) return isOwn and theme.Accent or theme.Card end)
 		bubble.BackgroundTransparency = 1
 		bubble.BorderSizePixel = 0
 		bubble.ClipsDescendants = true
@@ -737,7 +739,7 @@ function Window:AddGlobalChatPanel(opts)
 		label.BackgroundTransparency = 1
 		label.FontFace = NullUI.Theme.FontRegular
 		label.Text = text
-		label.TextColor3 = NullUI.Theme.Text
+		BindTheme(label, "TextColor3", "Text")
 		label.TextTransparency = 1
 		label.TextSize = 13
 		label.TextWrapped = true
@@ -755,7 +757,7 @@ function Window:AddGlobalChatPanel(opts)
 			timeLbl.BackgroundTransparency = 1
 			timeLbl.FontFace = NullUI.Theme.FontRegular
 			timeLbl.Text = os.date("%H:%M", math.floor(msg.CreatedAt / 1000))
-			timeLbl.TextColor3 = isOwn and Color3.new(1, 1, 1) or NullUI.Theme.TextDim
+			BindTheme(timeLbl, "TextColor3", function(theme) return isOwn and theme.Text or theme.TextDim end)
 			timeLbl.TextTransparency = isOwn and 0.5 or 0.4
 			timeLbl.TextSize = 10
 			timeLbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -773,7 +775,7 @@ function Window:AddGlobalChatPanel(opts)
 			local reportBtn = Instance.new("TextButton")
 			reportBtn.Text = ""
 			reportBtn.AutoButtonColor = false
-			reportBtn.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(reportBtn, "BackgroundColor3", "Card")
 			reportBtn.BackgroundTransparency = 1
 			reportBtn.BorderSizePixel = 0
 			reportBtn.Size = UDim2.fromOffset(20, 20)
@@ -786,7 +788,7 @@ function Window:AddGlobalChatPanel(opts)
 			reportIcon.BackgroundTransparency = 1
 			reportIcon.ImageTransparency = 1
 			reportIcon.Image = ResolveIcon("flag")
-			reportIcon.ImageColor3 = NullUI.Theme.TextDim
+			BindTheme(reportIcon, "ImageColor3", "TextDim")
 			reportIcon.Size = UDim2.fromOffset(11, 11)
 			reportIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 			reportIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -801,11 +803,11 @@ function Window:AddGlobalChatPanel(opts)
 			end))
 			jan:Add(reportBtn.MouseEnter:Connect(function()
 				Tween(reportBtn, { BackgroundTransparency = 0.88 }, 0.1)
-				Tween(reportIcon, { ImageColor3 = NullUI.Theme.Danger, ImageTransparency = 0 }, 0.1)
+				Tween(reportIcon, { ImageColor3 = ThemeValue("Danger"), ImageTransparency = 0 }, 0.1)
 			end))
 			jan:Add(reportBtn.MouseLeave:Connect(function()
 				Tween(reportBtn, { BackgroundTransparency = 1 }, 0.1)
-				Tween(reportIcon, { ImageColor3 = NullUI.Theme.TextDim }, 0.1)
+				Tween(reportIcon, { ImageColor3 = ThemeValue("TextDim") }, 0.1)
 			end))
 			jan:Add(reportBtn.MouseButton1Click:Connect(function()
 				NullUI:Confirm({
@@ -849,7 +851,7 @@ function Window:AddGlobalChatPanel(opts)
 		Tween(copyIcon, { ImageColor3 = Color3.fromRGB(120, 220, 140) }, 0.1)
 		task.delay(0.4, function()
 			if copyIcon.Parent then
-				Tween(copyIcon, { ImageColor3 = NullUI.Theme.TextDim }, 0.15)
+				Tween(copyIcon, { ImageColor3 = ThemeValue("TextDim") }, 0.15)
 			end
 		end)
 	end))
@@ -917,7 +919,7 @@ function Window:AddGlobalChatPanel(opts)
 
 		local popup = Instance.new("Frame")
 		popup.Name = "ChatSettingsPopup"
-		popup.BackgroundColor3 = NullUI.Theme.Surface
+		BindTheme(popup, "BackgroundColor3", "Surface")
 		popup.BackgroundTransparency = 0.05
 		popup.BorderSizePixel = 0
 		popup.AnchorPoint = Vector2.new(1, 0)
@@ -954,7 +956,7 @@ function Window:AddGlobalChatPanel(opts)
 			lbl.BackgroundTransparency = 1
 			lbl.FontFace = NullUI.Theme.FontRegular
 			lbl.Text = label
-			lbl.TextColor3 = NullUI.Theme.Text
+			BindTheme(lbl, "TextColor3", "Text")
 			lbl.TextSize = 12
 			lbl.TextXAlignment = Enum.TextXAlignment.Left
 			lbl.Size = UDim2.new(1, -30, 1, 0)
@@ -964,7 +966,7 @@ function Window:AddGlobalChatPanel(opts)
 			local check = Instance.new("TextButton")
 			check.Text = ""
 			check.AutoButtonColor = false
-			check.BackgroundColor3 = Color3.new(1, 1, 1)
+			BindTheme(check, "BackgroundColor3", "Card")
 			check.BackgroundTransparency = getValue() and 0.7 or 0.92
 			check.BorderSizePixel = 0
 			check.AnchorPoint = Vector2.new(1, 0.5)
@@ -977,7 +979,7 @@ function Window:AddGlobalChatPanel(opts)
 			local checkIcon = Instance.new("ImageLabel")
 			checkIcon.BackgroundTransparency = 1
 			checkIcon.Image = ResolveIcon("check")
-			checkIcon.ImageColor3 = NullUI.Theme.Accent
+			BindTheme(checkIcon, "ImageColor3", "Accent")
 			checkIcon.ImageTransparency = getValue() and 0 or 1
 			checkIcon.Size = UDim2.fromOffset(11, 11)
 			checkIcon.AnchorPoint = Vector2.new(0.5, 0.5)
